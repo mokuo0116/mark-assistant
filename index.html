@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#102b3f">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <title>DOKKYO MARK ASSISTANT v0.7</title>
 <style>
 :root{--navy:#102b3f;--blue:#1676a5;--bg:#f3f6f8;--ink:#17232d;--muted:#657784;--line:#d8e1e7;--green:#16845b;--red:#c34c45}
@@ -25,9 +26,10 @@ table{width:100%;border-collapse:collapse;font-size:12px}td,th{text-align:left;p
 .footer{text-align:center;color:#82919a;font-size:10px;padding:15px}
 @media(min-width:600px){main{padding:22px}}
 </style>
+<style>#realMap{height:420px;width:100%;border:1px solid var(--line);border-radius:10px;z-index:1}.map-empty{height:160px;display:grid;place-items:center;text-align:center;background:#f4f8fa;border-radius:10px;color:var(--muted);font-size:13px;padding:20px}</style>
 </head>
 <body>
-<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>MARK ASSISTANT <span style="font-size:11px;font-weight:500;opacity:.7">BETA 1.8</span></h1></header>
+<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>MARK ASSISTANT <span style="font-size:11px;font-weight:500;opacity:.7">BETA 1.9</span></h1></header>
 <nav><button class="active" data-tab="setting">コース設定</button><button data-tab="map">配置図</button><button data-tab="gps">GPS登録</button><button data-tab="analysis">コース診断</button></nav>
 <main>
 <section id="setting" class="active">
@@ -41,7 +43,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}td,th{text-align:left;p
   <div id="practiceFields" hidden>
    <h2 style="margin-top:12px">練習コース追加設定</h2>
    <div class="grid">
-    <div class="field"><label>4S-4P間隔／4S-4P間隔／スタートライン長（m）</label><input id="startDist" type="number" min="1" value="100"></div>
+    <div class="field"><label>4S-4P間隔／スタートライン長（m）</label><input id="startDist" type="number" min="1" value="100"></div>
     <div class="field" id="finishDistField"><label>4-フィニッシュ基準距離（m）</label><input id="finishDist" type="number" min="1" value="200"></div>
     <div class="field" id="finishLineField"><label>フィニッシュライン長（m）</label><input id="finishLine" type="number" min="1" value="50"></div>
    </div>
@@ -53,10 +55,11 @@ table{width:100%;border-collapse:collapse;font-size:12px}td,th{text-align:left;p
  <div class="card">
   <h2>基準位置</h2><p class="note">計画コースを地図上の座標に変換するための原点です。レスキュー艇または基準となる地点でGPS取得してください。</p>
   <div class="grid"><div class="field"><label>緯度</label><input id="baseLat" type="number" step="0.000001" placeholder="緯度"></div><div class="field"><label>経度</label><input id="baseLon" type="number" step="0.000001" placeholder="経度"></div></div>
-  <button class="secondary full" id="baseGps">現在位置を基準位置に設定</button><div class="status" id="baseStatus">基準位置は未設定です。</div>
+  <button class="secondary full" id="baseGps">現在位置を基準位置に設定</button><button class="primary full" id="baseAndMarkGps" style="margin-top:8px">基準位置と1番マークを同時登録</button><div class="status" id="baseStatus">基準位置は未設定です。</div>
  </div>
 </section>
 <section id="map">
+ <div class="card"><h2>実地図（GPS位置）</h2><p class="note">OpenStreetMapを背景地図として表示します。計画マークは基準位置からの相対座標を地理座標に変換して表示し、実測マークはGPS取得位置に表示します。地図タイルの読み込みにはインターネット接続が必要です。</p><div id="realMapEmpty" class="map-empty">基準位置を登録すると、ここに地図が表示されます。</div><div id="realMap" hidden></div><p class="note">地図データ：© OpenStreetMap contributors。海図ではありません。航行・障害物・水深等の安全確認には使用しないでください。</p></div>
  <div class="card"><h2>計画コース・実測位置</h2><p class="note">縮尺を合わせた相対配置図です。紫の「中点M」はラインあり練習コースでのみ表示される、フィニッシュラインの計画中点です。練習コースの4S・4Pは4番基準位置を中心に左右対称です。ラインなしのレスキュー艇は4S +120°と4P −160°の交点です。背景の海図・地図タイルは未接続です。</p><canvas id="plot" width="700" height="650"></canvas><div class="status" id="mapStatus"></div></div>
  <div class="card"><h2>マーク一覧</h2><div id="markList"></div></div>
 </section>
@@ -74,11 +77,12 @@ table{width:100%;border-collapse:collapse;font-size:12px}td,th{text-align:left;p
  <div class="card"><h2>各マークの設置誤差</h2><div id="errors"></div></div>
  <div class="card"><h2>ライン診断</h2><div id="lineDiag" class="status">練習コースのライン両端を登録すると実測値を表示します。</div></div>
 </section>
-<div class="footer">DOKKYO MARK ASSISTANT · BETA 1.8<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
+<div class="footer">DOKKYO MARK ASSISTANT · BETA 1.9<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
 </main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
 const $=id=>document.getElementById(id),rad=d=>d*Math.PI/180,deg=r=>r*180/Math.PI,norm=d=>(d%360+360)%360;
-let planned={},actual={},finishMidpointPlan=null;
+let planned={},actual={},finishMidpointPlan=null,realMap=null,realMapLayers=[];
 const labels={1:"1番マーク（風上）",4:"4番マーク（風下）",3:"サイドマーク",S:"スタートピン",RC:"スタートライン本部船側",F1:"フィニッシュライン端A",F2:"フィニッシュライン端B",R:"レスキュー艇（ホバリング位置）","4S":"4Sマーク（スタートライン左端）","4P":"4Pマーク（スタートライン右端）"};
 function settings(){return {course:$("course").value,wind:norm(+$("wind").value||0),d14:Math.max(1,+$("d14").value||700),startDist:Math.max(1,+$("startDist").value||100),finishDist:Math.max(1,+$("finishDist").value||200),finishLine:Math.max(1,+$("finishLine").value||50)}}
 function v(b,d){return {x:Math.sin(rad(b))*d,y:Math.cos(rad(b))*d}}
@@ -315,7 +319,72 @@ function diagnostics(){
 }
 function save(){try{localStorage.setItem("dokkyoMarkAssistantV02",JSON.stringify({actual,baseLat:$("baseLat").value,baseLon:$("baseLon").value,vals:Object.fromEntries(["course","wind","d14","startDist","finishDist","finishLine"].map(k=>[k,$(k).value]))}))}catch(e){}}
 function load(){try{let x=JSON.parse(localStorage.getItem("dokkyoMarkAssistantV02")||"null");if(!x)return;actual=x.actual||{};$("baseLat").value=x.baseLat||"";$("baseLon").value=x.baseLon||"";Object.entries(x.vals||{}).forEach(([k,v])=>$(k).value=v)}catch(e){}}
-function renderAll(){renderLists();draw();diagnostics();$("mapStatus").textContent=origin()?"基準位置を設定済み。":"基準位置未設定。模式図は相対配置です。";save()}
+
+function simultaneousTarget(){
+ const c=settings().course;
+ return (c==="windward"||c==="triangle")?"1":"4P";
+}
+function updateSimultaneousButton(){
+ const k=simultaneousTarget();
+ $("baseAndMarkGps").textContent=`基準位置と${k}マークを同時登録`;
+}
+function registerBaseAndMark(){
+ const k=simultaneousTarget();
+ $("baseStatus").textContent="基準位置・マーク位置を同時測位中…";
+ gps((f,e)=>{
+   if(!f){$("baseStatus").textContent=e;$("gpsStatus").textContent=e;return}
+   // One GPS fix is deliberately reused for both records.
+   $("baseLat").value=f.lat.toFixed(6);
+   $("baseLon").value=f.lon.toFixed(6);
+   actual[k]={...f};
+   $("baseStatus").textContent=`基準位置と${labels[k]||k}を同時登録しました。GPS精度 ±${Math.round(f.accuracy)}m`;
+   $("gpsStatus").textContent=`同一のGPS測位結果を基準位置と${labels[k]||k}に保存しました。`;
+   renderAll();
+ });
+}
+function clearRealMapLayers(){
+ if(realMapLayers.length){realMapLayers.forEach(x=>realMap.removeLayer(x));realMapLayers=[];}
+}
+function updateRealMap(){
+ const o=origin(),el=$("realMap"),empty=$("realMapEmpty");
+ if(!o){el.hidden=true;empty.hidden=false;return}
+ if(!window.L){el.hidden=true;empty.hidden=false;empty.textContent="地図ライブラリを読み込めません。インターネット接続を確認してください。";return}
+ el.hidden=false;empty.hidden=true;
+ if(!realMap){
+   realMap=L.map("realMap");
+   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+     maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+   }).addTo(realMap);
+ }
+ clearRealMapLayers();
+ const pts=[];
+ const addPoint=(latlng,label,color,kind)=>{
+   const marker=L.circleMarker(latlng,{radius:kind==="actual"?7:6,color,weight:2,fillColor:color,fillOpacity:.9}).addTo(realMap).bindTooltip(label);
+   realMapLayers.push(marker);pts.push(latlng);
+ };
+ addPoint([o.lat,o.lon],"基準位置","#17232d","base");
+ Object.keys(planned).forEach(k=>{
+   const g=geo(o,planned[k]);
+   addPoint([g.lat,g.lon],`${k}：${labels[k]||k}（計画）`,"#1676a5","planned");
+ });
+ Object.keys(actual).forEach(k=>{
+   const a=actual[k];
+   addPoint([a.lat,a.lon],`${k}：${labels[k]||k}（実測・精度±${Math.round(a.accuracy||0)}m）`,"#c34c45","actual");
+ });
+ const addLine=(a,b,color)=>{
+   if(!planned[a]||!planned[b])return;
+   const ga=geo(o,planned[a]),gb=geo(o,planned[b]);
+   const line=L.polyline([[ga.lat,ga.lon],[gb.lat,gb.lon]],{color,weight:3,opacity:.85}).addTo(realMap);
+   realMapLayers.push(line);
+ };
+ addLine("4S","4P","#16845b");addLine("F1","F2","#c34c45");addLine("4P","R","#c34c45");
+ if(pts.length){
+   const bounds=L.latLngBounds(pts);
+   if(pts.length===1)realMap.setView(pts[0],15);else realMap.fitBounds(bounds.pad(.18),{maxZoom:17});
+ }
+ setTimeout(()=>realMap.invalidateSize(),100);
+}
+function renderAll(){renderLists();draw();diagnostics();updateRealMap();updateSimultaneousButton();$("mapStatus").textContent=origin()?"基準位置を設定済み。":"基準位置未設定。模式図は相対配置です。";save()}
 function removeActual(k){delete actual[k];renderAll()}
 function updatePracticeFields(){
  const c=$("course").value;
@@ -326,10 +395,11 @@ function updatePracticeFields(){
 }
 $("course").onchange=()=>{updatePracticeFields();makePlan()};
 $("generate").onclick=makePlan;
+$("baseAndMarkGps").onclick=registerBaseAndMark;
 $("baseGps").onclick=()=>gps((f,e)=>{if(!f){$("baseStatus").textContent=e;return}$("baseLat").value=f.lat.toFixed(6);$("baseLon").value=f.lon.toFixed(6);$("baseStatus").textContent=`基準位置を登録しました。GPS精度 ±${Math.round(f.accuracy)}m`;renderAll()});
 $("capture").onclick=()=>{let k=$("gpsMark").value;gps((f,e)=>{if(!f){$("gpsStatus").textContent=e;return}actual[k]=f;$("gpsStatus").textContent=`${labels[k]||k}を登録。${f.lat.toFixed(6)}, ${f.lon.toFixed(6)} ／ 精度 ±${Math.round(f.accuracy)}m`;renderAll()})};
 $("clearGps").onclick=()=>{if(confirm("実測座標をすべて削除しますか？")){actual={};renderAll();$("gpsStatus").textContent="実測座標を削除しました。"}};
-document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll("main section").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab));renderAll()});
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll("main section").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab));renderAll();if(b.dataset.tab==="map"&&realMap)setTimeout(()=>realMap.invalidateSize(),120)});
 ["wind","d14","startDist","finishDist","finishLine","baseLat","baseLon"].forEach(k=>$(k).addEventListener("change",()=>makePlan()));
 load();updatePracticeFields();makePlan();
 </script>
