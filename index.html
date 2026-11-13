@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#102b3f">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<title>DOKKYO MARK ASSISTANT v0.8</title>
+<title>DOKKYO MARK ASSISTANT v2.2</title>
 <style>
 :root{--navy:#102b3f;--blue:#1676a5;--bg:#f3f6f8;--ink:#17232d;--muted:#657784;--line:#d8e1e7;--green:#16845b;--red:#c34c45}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif}
@@ -29,7 +29,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}td,th{text-align:left;p
 <style>#realMap{height:420px;width:100%;border:1px solid var(--line);border-radius:10px;z-index:1}.map-empty{height:160px;display:grid;place-items:center;text-align:center;background:#f4f8fa;border-radius:10px;color:var(--muted);font-size:13px;padding:20px}</style>
 </head>
 <body>
-<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>MARK ASSISTANT <span style="font-size:11px;font-weight:500;opacity:.7">BETA 2.0</span></h1></header>
+<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>MARK ASSISTANT <span style="font-size:11px;font-weight:500;opacity:.7">BETA 2.2</span></h1></header>
 <nav><button class="active" data-tab="setting">コース設定</button><button data-tab="map">配置図</button><button data-tab="gps">GPS登録</button><button data-tab="analysis">コース診断</button></nav>
 <main>
 <section id="setting" class="active">
@@ -67,7 +67,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}td,th{text-align:left;p
  </div>
 </section>
 <section id="map">
- <div class="card"><h2>実地図（GPS位置）</h2><p class="note">OpenStreetMapを背景地図として表示します。計画マークは基準位置からの相対座標を地理座標に変換して表示し、実測マークはGPS取得位置に表示します。地図タイルの読み込みにはインターネット接続が必要です。</p><div id="realMapEmpty" class="map-empty">基準位置を登録すると、ここに地図が表示されます。</div><div id="realMap" hidden></div>
+ <div class="card"><h2>実地図（GPS位置）</h2><p class="note">OpenStreetMapを背景地図として表示します。計画マークは基準位置からの相対座標を地理座標に変換して表示し、実測マークはGPS取得位置に表示します。地図タイルの読み込みにはインターネット接続が必要です。</p><div id="realMapEmpty" class="map-empty">地図を表示しています。基準位置またはGPS現在地を取得すると、その周辺へ移動します。</div><div id="realMap" hidden></div>
   <button class="primary full" id="liveGps" style="margin-top:10px">リアルタイム現在地を表示</button>
   <div class="status" id="liveStatus">現在地の追跡は停止中です。</div>
   <div id="liveReadings" class="note" style="margin-top:8px">現在地を取得すると、計画ポイントまでの距離・方位を表示します。</div>
@@ -89,13 +89,20 @@ table{width:100%;border-collapse:collapse;font-size:12px}td,th{text-align:left;p
  <div class="card"><h2>各マークの設置誤差</h2><div id="errors"></div></div>
  <div class="card"><h2>ライン診断</h2><div id="lineDiag" class="status">練習コースのライン両端を登録すると実測値を表示します。</div></div>
 </section>
-<div class="footer">DOKKYO MARK ASSISTANT · BETA 2.0<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
+<div class="footer">DOKKYO MARK ASSISTANT · BETA 2.2<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
+// ============================================================
+// 1. 共通ユーティリティ・アプリ状態
+// ============================================================
 const $=id=>document.getElementById(id),rad=d=>d*Math.PI/180,deg=r=>r*180/Math.PI,norm=d=>(d%360+360)%360;
 let planned={},actual={},finishMidpointPlan=null,realMap=null,realMapLayers=[],liveWatchId=null,liveMarker=null,livePosition=null;
+// マーク表示名
 const labels={1:"1番マーク（風上）",4:"4番マーク（風下）",3:"サイドマーク",S:"スタートピン",RC:"スタートライン本部船側",F1:"フィニッシュライン端A",F2:"フィニッシュライン端B",R:"レスキュー艇（ホバリング位置）","4S":"4Sマーク（スタートライン左端）","4P":"4Pマーク（スタートライン右端）"};
+// ============================================================
+// 2. コース設定・幾何計算
+// ============================================================
 function settings(){return {course:$("course").value,wind:norm(+$("wind").value||0),d14:Math.max(1,+$("d14").value||700),startDist:Math.max(1,+$("startDist").value||100),finishDist:Math.max(1,+$("finishDist").value||200),finishLine:Math.max(1,+$("finishLine").value||50)}}
 function v(b,d){return {x:Math.sin(rad(b))*d,y:Math.cos(rad(b))*d}}
 function plus(a,b){return{x:a.x+b.x,y:a.y+b.y}}
@@ -178,6 +185,9 @@ function makePlan(){
  planned=p;
  renderAll();
 }
+// ============================================================
+// 3. 地理座標変換・距離方位計算
+// ============================================================
 function geo(origin,xy){
  const R=6378137,d=Math.hypot(xy.x,xy.y)/R,b=rad(norm(deg(Math.atan2(xy.x,xy.y)))),p1=rad(origin.lat),l1=rad(origin.lon);
  const p2=Math.asin(Math.sin(p1)*Math.cos(d)+Math.cos(p1)*Math.sin(d)*Math.cos(b));
@@ -192,8 +202,14 @@ function inverse(a,b){
 }
 function origin(){let lat=$("baseLat").value,lon=$("baseLon").value;return lat!==""&&lon!==""?{lat:+lat,lon:+lon}:null}
 function planGeo(k){let o=origin();return o&&planned[k]?geo(o,planned[k]):null}
+// ============================================================
+// 4. GPS取得・マーク登録
+// ============================================================
 function gps(cb){if(!navigator.geolocation){cb(null,"このブラウザはGPSに対応していません。");return} $("gpsStatus").textContent="GPS測位中…";navigator.geolocation.getCurrentPosition(x=>cb({lat:x.coords.latitude,lon:x.coords.longitude,accuracy:x.coords.accuracy,time:x.timestamp}),e=>cb(null,({1:"位置情報の許可がありません。",2:"現在位置を取得できません。",3:"測位がタイムアウトしました。"}[e.code]||e.message)),{enableHighAccuracy:true,timeout:25000,maximumAge:0})}
 function getKeys(){return Object.keys(planned)}
+// ============================================================
+// 5. 画面描画・配置図
+// ============================================================
 function renderLists(){
  $("gpsMark").innerHTML=getKeys().map(k=>`<option value="${k}">${labels[k]||k}</option>`).join("");
  $("markList").innerHTML=getKeys().map(k=>{let q=planned[k],g=planGeo(k);return `<div class="markrow"><div><strong>${labels[k]||k}</strong><small>相対位置：東 ${q.x.toFixed(1)}m／北 ${q.y.toFixed(1)}m${g?`<br>計画座標：${g.lat.toFixed(6)}, ${g.lon.toFixed(6)}`:""}</small></div><span class="tag ${actual[k]?"ok":""}">${actual[k]?"実測登録済":"未登録"}</span></div>`}).join("");
@@ -222,6 +238,9 @@ function drawSegment(a,b,color,width=4){if(!planned[a]||!planned[b])return;let p
  const o=origin();if(o)keys.forEach(k=>{if(!actual[k])return;let r=inverse(o,actual[k]),xy=v(r.bearing,r.dist),q=pt(xy),p=pt(planned[k]);ctx.strokeStyle="#c34c45";ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle="#c34c45";ctx.beginPath();ctx.arc(q.x,q.y,7,0,Math.PI*2);ctx.fill()});
  ctx.fillStyle="#526875";ctx.font="13px sans-serif";ctx.fillText("青：計画マーク　緑：4S-4Pライン　赤：フィニッシュライン／実測位置　橙：風軸（1-4間の補助線は非表示）",18,640);
 }
+// ============================================================
+// 6. 配置診断
+// ============================================================
 function diagnostics(){
  const cfg=settings(),p1=actual["1"],p4=actual["4"];
  $("plannedDist").textContent=`${cfg.d14.toFixed(0)}m`;
@@ -329,6 +348,9 @@ function diagnostics(){
    ?`<table><thead><tr><th>ライン</th><th>実測長</th><th>実測方位</th><th>合成GPS精度</th><th>評価</th></tr></thead><tbody>${lineRows.join("")}</tbody></table><p class="note">ライン両端のGPS精度を二乗和平方根で合成し、長さ・方位の差が測位誤差の目安内かを判定しています。</p>`
    :"このコース形式ではライン診断はありません。";
 }
+// ============================================================
+// 7. ローカル保存・共有・履歴
+// ============================================================
 function save(){try{localStorage.setItem("dokkyoMarkAssistantV02",JSON.stringify({actual,baseLat:$("baseLat").value,baseLon:$("baseLon").value,vals:Object.fromEntries(["course","wind","d14","startDist","finishDist","finishLine"].map(k=>[k,$(k).value]))}))}catch(e){}}
 function load(){try{let x=JSON.parse(localStorage.getItem("dokkyoMarkAssistantV02")||"null");if(!x)return;actual=x.actual||{};$("baseLat").value=x.baseLat||"";$("baseLon").value=x.baseLon||"";Object.entries(x.vals||{}).forEach(([k,v])=>$(k).value=v)}catch(e){}}
 
@@ -377,14 +399,28 @@ function applyData(x){
  Object.entries(x.vals).forEach(([k,v])=>{if($(k))$(k).value=v});
  updatePracticeFields();makePlan();renderAll();
 }
+function courseName(){
+ return ({windward:"上下",triangle:"トライアングル",practice:"練習コース（ラインなし）",practiceLine:"練習コース（ラインあり）"}[$("course").value]||$("course").value);
+}
 function createShareLink(){
  const url=new URL(location.href);
  url.hash="data="+encodeData(allData());
- $("shareStatus").textContent="共有リンクを作成しました。";
  const link=url.toString();
- if(navigator.clipboard?.writeText){
-  navigator.clipboard.writeText(link).then(()=>$("shareStatus").textContent="共有リンクをコピーしました。もう一方のレスキュー艇に送ってください。").catch(()=>$("shareStatus").textContent=link);
- }else $("shareStatus").textContent=link;
+ const wind=Number($("wind").value);
+ const d14=Number($("d14").value);
+ const message=[
+  "【DOKKYO MARK ASSISTANT／コース計画共有】",
+  `コース設定：${courseName()}`,
+  `風軸：${Number.isFinite(wind)?String(Math.round(wind)).padStart(3,"0")+"°":"未設定"}`,
+  `1-4距離：${Number.isFinite(d14)?d14+" m":"未設定"}`,
+  "",
+  "計画データはこちら：",
+  link
+ ].join("\n");
+ const lineUrl="https://line.me/R/msg/text/?"+encodeURIComponent(message);
+ $("shareStatus").textContent="LINEの共有画面を開きます。送信先を選んで送信してください。";
+ // LINE opens with a prefilled text message; sending remains the user's action.
+ window.location.href=lineUrl;
 }
 function historyItems(){try{return JSON.parse(localStorage.getItem("dokkyoMarkHistory")||"[]")}catch(e){return []}}
 function saveHistory(){
@@ -400,6 +436,9 @@ function renderHistory(){
  el.innerHTML=h.map((x,i)=>`<div class="markrow"><div><strong>${new Date(x.savedAt||x.id).toLocaleString("ja-JP")}</strong><small>${({windward:"上下",triangle:"トライアングル",practice:"練習コース（ラインなし）",practiceLine:"練習コース（ラインあり）"}[x.vals?.course]||x.vals?.course||"設定不明")} ／ 風軸 ${x.vals?.wind??"—"}°</small></div><button class="secondary" data-history="${i}">復元</button></div>`).join("");
  el.querySelectorAll("[data-history]").forEach(b=>b.onclick=()=>{applyData(h[+b.dataset.history]);$("shareStatus").textContent="履歴を復元しました。";});
 }
+// ============================================================
+// 8. リアルタイム位置・地図
+// ============================================================
 function bearingText(n){return `${String(Math.round(n)%360).padStart(3,"0")}°`}
 function updateLiveReadings(){
  if(!livePosition)return;
@@ -440,7 +479,6 @@ function clearRealMapLayers(){
 }
 function updateRealMap(){
  const o=origin(),el=$("realMap"),empty=$("realMapEmpty");
- if(!o){el.hidden=true;empty.hidden=false;return}
  if(!window.L){el.hidden=true;empty.hidden=false;empty.textContent="地図ライブラリを読み込めません。インターネット接続を確認してください。";return}
  el.hidden=false;empty.hidden=true;
  if(!realMap){
@@ -455,17 +493,19 @@ function updateRealMap(){
    const marker=L.circleMarker(latlng,{radius:kind==="actual"?7:6,color,weight:2,fillColor:color,fillOpacity:.9}).addTo(realMap).bindTooltip(label);
    realMapLayers.push(marker);pts.push(latlng);
  };
- addPoint([o.lat,o.lon],"基準位置","#17232d","base");
- Object.keys(planned).forEach(k=>{
-   const g=geo(o,planned[k]);
-   addPoint([g.lat,g.lon],`${k}：${labels[k]||k}（計画）`,"#1676a5","planned");
- });
+ if(o){
+   addPoint([o.lat,o.lon],"基準位置","#17232d","base");
+   Object.keys(planned).forEach(k=>{
+     const g=geo(o,planned[k]);
+     addPoint([g.lat,g.lon],`${k}：${labels[k]||k}（計画）`,"#1676a5","planned");
+   });
+ }
  Object.keys(actual).forEach(k=>{
    const a=actual[k];
    addPoint([a.lat,a.lon],`${k}：${labels[k]||k}（実測・精度±${Math.round(a.accuracy||0)}m）`,"#c34c45","actual");
  });
  const addLine=(a,b,color)=>{
-   if(!planned[a]||!planned[b])return;
+   if(!o||!planned[a]||!planned[b])return;
    const ga=geo(o,planned[a]),gb=geo(o,planned[b]);
    const line=L.polyline([[ga.lat,ga.lon],[gb.lat,gb.lon]],{color,weight:3,opacity:.85}).addTo(realMap);
    realMapLayers.push(line);
@@ -480,9 +520,16 @@ function updateRealMap(){
  if(pts.length){
    const bounds=L.latLngBounds(pts);
    if(pts.length===1)realMap.setView(pts[0],15);else realMap.fitBounds(bounds.pad(.18),{maxZoom:17});
+ }else if(!realMap._hasInitialView){
+   // Neutral Japan-area view until GPS or a base point is available.
+   realMap.setView([35.5,139.5],5);
+   realMap._hasInitialView=true;
  }
  setTimeout(()=>realMap.invalidateSize(),100);
 }
+// ============================================================
+// 9. 画面更新・イベント登録・初期化
+// ============================================================
 function renderAll(){renderLists();draw();diagnostics();updateRealMap();updateLiveReadings();updateSimultaneousButton();$("mapStatus").textContent=origin()?"基準位置を設定済み。":"基準位置未設定。模式図は相対配置です。";save()}
 function removeActual(k){delete actual[k];renderAll()}
 function updatePracticeFields(){
@@ -503,6 +550,28 @@ $("capture").onclick=()=>{let k=$("gpsMark").value;gps((f,e)=>{if(!f){$("gpsStat
 $("clearGps").onclick=()=>{if(confirm("実測座標をすべて削除しますか？")){actual={};renderAll();$("gpsStatus").textContent="実測座標を削除しました。"}};
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll("main section").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab));renderAll();if(b.dataset.tab==="map"&&realMap)setTimeout(()=>realMap.invalidateSize(),120)});
 ["wind","d14","startDist","finishDist","finishLine","baseLat","baseLon"].forEach(k=>$(k).addEventListener("change",()=>makePlan()));
-load();updatePracticeFields();makePlan();
+function initializeApp(){
+ // 端末内の前回データを読み込む。
+ load();
+
+ // 共有リンクで開かれた場合は、URL内のスナップショットを優先する。
+ // 読み込み後はURLからデータ本体を取り除き、通常の画面URLに戻す。
+ try{
+   const match=location.hash.match(/(?:^#|&)data=([^&]+)/);
+   if(match){
+     const shared=decodeData(match[1]);
+     applyData(shared);
+     history.replaceState(null,"",location.pathname+location.search);
+     if($("shareStatus"))$("shareStatus").textContent="共有リンクのコースデータを読み込みました。";
+   }
+ }catch(error){
+   if($("shareStatus"))$("shareStatus").textContent="共有データを読み込めませんでした："+error.message;
+ }
+
+ updatePracticeFields();
+ makePlan();
+ renderHistory();
+}
+initializeApp();
 </script>
 </body></html>
