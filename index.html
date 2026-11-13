@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#102b3f">
+<title>DOKKYO MARK ASSISTANT v0.7</title>
+<style>
+:root{--navy:#102b3f;--blue:#1676a5;--bg:#f3f6f8;--ink:#17232d;--muted:#657784;--line:#d8e1e7;--green:#16845b;--red:#c34c45}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif}
+header{background:var(--navy);color:white;padding:16px;position:sticky;top:0;z-index:5}header .sub{font-size:10px;letter-spacing:.14em;opacity:.75}header h1{font-size:18px;margin:3px 0}
+nav{display:flex;overflow:auto;background:white;border-bottom:1px solid var(--line);position:sticky;top:61px;z-index:4}nav button{border:0;background:white;color:var(--muted);padding:13px 14px;white-space:nowrap;font-weight:700;border-bottom:3px solid transparent}nav button.active{color:var(--blue);border-color:var(--blue)}
+main{max-width:760px;margin:auto;padding:14px 12px 40px}section{display:none}section.active{display:block}
+.card{background:white;border:1px solid var(--line);border-radius:13px;padding:15px;margin-bottom:13px;box-shadow:0 2px 7px #102b3f0a}h2{font-size:16px;margin:0 0 12px}
+label{display:block;font-size:12px;color:var(--muted);font-weight:700;margin:0 0 5px}input,select{width:100%;padding:12px;border:1px solid #cbd7df;border-radius:9px;background:#fff;font:inherit;font-size:16px;color:var(--ink)}
+.field{margin-bottom:11px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button.primary,button.secondary,button.danger{border:0;border-radius:10px;padding:13px 14px;font-size:14px;font-weight:750;cursor:pointer}
+button.primary{background:var(--blue);color:white}button.secondary{background:#e8f1f5;color:var(--navy)}button.danger{background:#fff0ed;color:#a13b2b}.full{width:100%}
+.note{font-size:12px;color:var(--muted);line-height:1.6}.status{padding:10px;border-radius:9px;background:#f0f5f7;font-size:13px;line-height:1.6;margin-top:8px}
+.pill,.tag{display:inline-block;padding:4px 8px;border-radius:99px;font-size:11px;font-weight:700;background:#e8f4f8;color:#176487}.tag.ok{background:#e6f5ee;color:#16744f}.diag-badge{display:inline-block;padding:2px 6px;border-radius:6px;font-size:10px;font-weight:750;white-space:nowrap}.diag-badge.ok{background:#e6f5ee;color:#16744f}.diag-badge.review{background:#fff4d8;color:#8a6415}.diag-badge.warn{background:#fde9e6;color:#a13b2b}
+#plot{width:100%;height:auto;background:#f8fbfc;border:1px solid var(--line);border-radius:10px;display:block}
+.markrow{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid #edf1f3}.markrow:last-child{border:0}.markrow strong{font-size:14px}.markrow small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:9px}.kpi{background:#f4f8fa;padding:12px;border-radius:10px}.kpi small{display:block;color:var(--muted);font-size:11px}.kpi strong{font-size:21px;font-variant-numeric:tabular-nums}
+table{width:100%;border-collapse:collapse;font-size:12px}td,th{text-align:left;padding:9px 5px;border-bottom:1px solid #e8eef1}th{color:var(--muted)}
+.footer{text-align:center;color:#82919a;font-size:10px;padding:15px}
+@media(min-width:600px){main{padding:22px}}
+</style>
+</head>
+<body>
+<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>MARK ASSISTANT <span style="font-size:11px;font-weight:500;opacity:.7">BETA 1.8</span></h1></header>
+<nav><button class="active" data-tab="setting">コース設定</button><button data-tab="map">配置図</button><button data-tab="gps">GPS登録</button><button data-tab="analysis">コース診断</button></nav>
+<main>
+<section id="setting" class="active">
+ <div class="card">
+  <h2>コース設定</h2>
+  <div class="field"><label>コース形式</label><select id="course"><option value="windward">上下</option><option value="triangle">トライアングル</option><option value="practice">練習コース</option><option value="practiceLine">練習コース（ラインあり）</option></select></div>
+  <div class="grid">
+   <div class="field"><label>風軸（真方位 °）</label><input id="wind" type="number" min="0" max="359" value="0"></div>
+   <div class="field"><label>1-4距離（m）</label><input id="d14" type="number" min="1" value="700"></div>
+  </div>
+  <div id="practiceFields" hidden>
+   <h2 style="margin-top:12px">練習コース追加設定</h2>
+   <div class="grid">
+    <div class="field"><label>4S-4P間隔／4S-4P間隔／スタートライン長（m）</label><input id="startDist" type="number" min="1" value="100"></div>
+    <div class="field" id="finishDistField"><label>4-フィニッシュ基準距離（m）</label><input id="finishDist" type="number" min="1" value="200"></div>
+    <div class="field" id="finishLineField"><label>フィニッシュライン長（m）</label><input id="finishLine" type="number" min="1" value="50"></div>
+   </div>
+   <p class="note">練習コースでは4番基準位置を中心に4S・4Pを左右対称に配置し、間隔をスタートライン長で固定します。ラインなしでは、4Sから風軸+120°、4Pから風軸−160°に引いた2本の半直線の交点をレスキュー艇の待機位置とします。ラインなしのフィニッシュ位置は角度とスタートライン長だけで決まるため、フィニッシュ距離・ライン長の追加設定はありません。ラインありの場合のみ、フィニッシュ基準距離とフィニッシュライン長を設定します。</p>
+  </div>
+  <p class="note">風軸は「風が吹いてくる方向」を北=000°、東=090°の真方位で入力します。コースの1番マークを風上側、4番マークを風下側として生成します。</p>
+  <button class="primary full" id="generate">コースを生成</button>
+ </div>
+ <div class="card">
+  <h2>基準位置</h2><p class="note">計画コースを地図上の座標に変換するための原点です。レスキュー艇または基準となる地点でGPS取得してください。</p>
+  <div class="grid"><div class="field"><label>緯度</label><input id="baseLat" type="number" step="0.000001" placeholder="緯度"></div><div class="field"><label>経度</label><input id="baseLon" type="number" step="0.000001" placeholder="経度"></div></div>
+  <button class="secondary full" id="baseGps">現在位置を基準位置に設定</button><div class="status" id="baseStatus">基準位置は未設定です。</div>
+ </div>
+</section>
+<section id="map">
+ <div class="card"><h2>計画コース・実測位置</h2><p class="note">縮尺を合わせた相対配置図です。紫の「中点M」はラインあり練習コースでのみ表示される、フィニッシュラインの計画中点です。練習コースの4S・4Pは4番基準位置を中心に左右対称です。ラインなしのレスキュー艇は4S +120°と4P −160°の交点です。背景の海図・地図タイルは未接続です。</p><canvas id="plot" width="700" height="650"></canvas><div class="status" id="mapStatus"></div></div>
+ <div class="card"><h2>マーク一覧</h2><div id="markList"></div></div>
+</section>
+<section id="gps">
+ <div class="card"><h2>GPSマーク登録</h2><p class="note">レスキュー艇がマークの近くで安定してから、番号を選んでGPS位置を取得します。測位精度も保存します。</p>
+  <div class="field"><label>登録するマーク</label><select id="gpsMark"></select></div><button class="primary full" id="capture">現在位置を取得して登録</button><div class="status" id="gpsStatus">GPS未取得</div>
+ </div>
+ <div class="card"><h2>登録済み座標</h2><div id="gpsList"></div><button class="danger full" id="clearGps">実測座標をすべて消去</button></div>
+</section>
+<section id="analysis">
+ <div class="card"><h2>コース診断</h2><p class="note">計画座標と実測GPS座標を比較します。端末のGPS精度を考慮し、誤差内・再測位・修正候補を区別します。修正方向は現在位置から計画位置へ向かう目安です。</p>
+  <div class="kpis"><div class="kpi"><small>計画 1-4距離</small><strong id="plannedDist">—</strong></div><div class="kpi"><small>実測 1-4距離</small><strong id="actualDist">—</strong></div><div class="kpi"><small>計画 1→4 方位</small><strong id="plannedBearing">—</strong></div><div class="kpi"><small>実測 1→4 方位</small><strong id="actualBearing">—</strong></div></div>
+  <div class="status" id="diagStatus">1番・4番を登録すると診断できます。</div>
+ </div>
+ <div class="card"><h2>各マークの設置誤差</h2><div id="errors"></div></div>
+ <div class="card"><h2>ライン診断</h2><div id="lineDiag" class="status">練習コースのライン両端を登録すると実測値を表示します。</div></div>
+</section>
+<div class="footer">DOKKYO MARK ASSISTANT · BETA 1.8<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
+</main>
+<script>
+const $=id=>document.getElementById(id),rad=d=>d*Math.PI/180,deg=r=>r*180/Math.PI,norm=d=>(d%360+360)%360;
+let planned={},actual={},finishMidpointPlan=null;
+const labels={1:"1番マーク（風上）",4:"4番マーク（風下）",3:"サイドマーク",S:"スタートピン",RC:"スタートライン本部船側",F1:"フィニッシュライン端A",F2:"フィニッシュライン端B",R:"レスキュー艇（ホバリング位置）","4S":"4Sマーク（スタートライン左端）","4P":"4Pマーク（スタートライン右端）"};
+function settings(){return {course:$("course").value,wind:norm(+$("wind").value||0),d14:Math.max(1,+$("d14").value||700),startDist:Math.max(1,+$("startDist").value||100),finishDist:Math.max(1,+$("finishDist").value||200),finishLine:Math.max(1,+$("finishLine").value||50)}}
+function v(b,d){return {x:Math.sin(rad(b))*d,y:Math.cos(rad(b))*d}}
+function plus(a,b){return{x:a.x+b.x,y:a.y+b.y}}
+function makePlan(){
+ // Rebuild all course-specific construction state on every course change.
+ // M exists only for the practice course with a separate finish line.
+ finishMidpointPlan=null;
+ const s=settings(),p={};
+
+ // 1-4 axis: mark 1 is upwind and the 4-mark reference is downwind.
+ // The 4-mark reference is the midpoint of 4S-4P in BOTH practice variants.
+ p["1"]=v(s.wind,s.d14/2);
+ p["4"]=v(norm(s.wind+180),s.d14/2);
+
+ if(s.course==="triangle"){
+   // Port-side equilateral triangle.
+   p["3"]=v(norm(s.wind-90),s.d14*Math.sqrt(3)/2);
+ }
+
+ if(s.course==="practice"||s.course==="practiceLine"){
+   const isLine=(s.course==="practiceLine");
+
+   // Shared geometry for both practice courses:
+   // 4S and 4P are fixed, symmetric about mark 4, and separated
+   // by exactly the configured start-line length.
+   const halfStart=v(norm(s.wind+90),s.startDist/2);
+   p["4S"]={x:p["4"].x-halfStart.x,y:p["4"].y-halfStart.y};
+   p["4P"]=plus(p["4"],halfStart);
+
+   // Consequently, 1-4S-4P is isosceles: mark 1 lies on the
+   // perpendicular bisector of the fixed 4S-4P base.
+   // No mark is moved to satisfy the finish-line geometry.
+
+   // At 4S, the angle from the 4S->1 bearing to the 4S->finish-midpoint
+   // bearing is 120 degrees clockwise (starboard side).
+   if(isLine){
+     // Only the line-available variant uses finish distance and finish-line length.
+     const bearingToOne=norm(deg(Math.atan2(
+       p["1"].x-p["4P"].x,
+       p["1"].y-p["4P"].y
+     )));
+     const bearingToMidpoint=norm(bearingToOne+120);
+     const finishMidpoint=plus(p["4P"],v(bearingToMidpoint,s.finishDist));
+     finishMidpointPlan=finishMidpoint;
+     const halfFinish=v(norm(bearingToMidpoint+90),s.finishLine/2);
+     p["F1"]={x:finishMidpoint.x-halfFinish.x,y:finishMidpoint.y-halfFinish.y};
+     p["F2"]=plus(finishMidpoint,halfFinish);
+   }else{
+     finishMidpointPlan=null;
+     // No-line course: determine the rescue-boat position as the
+     // intersection of two bearings from the fixed start-line endpoints:
+     // 4S -> wind axis +120°, 4P -> wind axis -160°.
+     // The rescue boat is the intersection; 1, 4S and 4P remain fixed.
+     const rayS=v(norm(s.wind+120),1);
+     const rayP=v(norm(s.wind-160),1);
+     const dx=p["4P"].x-p["4S"].x;
+     const dy=p["4P"].y-p["4S"].y;
+     const cross=(a,b)=>a.x*b.y-a.y*b.x;
+     const denom=cross(rayS,rayP);
+     if(Math.abs(denom)<1e-9){
+       // Parallel construction rays: leave R unset rather than inventing
+       // a misleading finish position.
+       delete p["R"];
+     }else{
+       const t=cross({x:dx,y:dy},rayP)/denom;
+       const u=cross({x:dx,y:dy},rayS)/denom;
+       if(t>=0&&u>=0){
+         p["R"]={
+           x:p["4S"].x+t*rayS.x,
+           y:p["4S"].y+t*rayS.y
+         };
+       }else{
+         // The rays do not meet in their forward directions.
+         delete p["R"];
+       }
+     }
+   }
+ }
+
+ planned=p;
+ renderAll();
+}
+function geo(origin,xy){
+ const R=6378137,d=Math.hypot(xy.x,xy.y)/R,b=rad(norm(deg(Math.atan2(xy.x,xy.y)))),p1=rad(origin.lat),l1=rad(origin.lon);
+ const p2=Math.asin(Math.sin(p1)*Math.cos(d)+Math.cos(p1)*Math.sin(d)*Math.cos(b));
+ const l2=l1+Math.atan2(Math.sin(b)*Math.sin(d)*Math.cos(p1),Math.cos(d)-Math.sin(p1)*Math.sin(p2));
+ return{lat:deg(p2),lon:deg(l2)};
+}
+function inverse(a,b){
+ const R=6378137,p1=rad(a.lat),p2=rad(b.lat),dl=rad(b.lon-a.lon),dp=p2-p1;
+ const h=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2,dist=2*R*Math.asin(Math.sqrt(h));
+ const y=Math.sin(dl)*Math.cos(p2),x=Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl);
+ return{dist,bearing:norm(deg(Math.atan2(y,x)))};
+}
+function origin(){let lat=$("baseLat").value,lon=$("baseLon").value;return lat!==""&&lon!==""?{lat:+lat,lon:+lon}:null}
+function planGeo(k){let o=origin();return o&&planned[k]?geo(o,planned[k]):null}
+function gps(cb){if(!navigator.geolocation){cb(null,"このブラウザはGPSに対応していません。");return} $("gpsStatus").textContent="GPS測位中…";navigator.geolocation.getCurrentPosition(x=>cb({lat:x.coords.latitude,lon:x.coords.longitude,accuracy:x.coords.accuracy,time:x.timestamp}),e=>cb(null,({1:"位置情報の許可がありません。",2:"現在位置を取得できません。",3:"測位がタイムアウトしました。"}[e.code]||e.message)),{enableHighAccuracy:true,timeout:25000,maximumAge:0})}
+function getKeys(){return Object.keys(planned)}
+function renderLists(){
+ $("gpsMark").innerHTML=getKeys().map(k=>`<option value="${k}">${labels[k]||k}</option>`).join("");
+ $("markList").innerHTML=getKeys().map(k=>{let q=planned[k],g=planGeo(k);return `<div class="markrow"><div><strong>${labels[k]||k}</strong><small>相対位置：東 ${q.x.toFixed(1)}m／北 ${q.y.toFixed(1)}m${g?`<br>計画座標：${g.lat.toFixed(6)}, ${g.lon.toFixed(6)}`:""}</small></div><span class="tag ${actual[k]?"ok":""}">${actual[k]?"実測登録済":"未登録"}</span></div>`}).join("");
+ $("gpsList").innerHTML=getKeys().filter(k=>actual[k]).map(k=>`<div class="markrow"><div><strong>${labels[k]||k}</strong><small>${actual[k].lat.toFixed(6)}, ${actual[k].lon.toFixed(6)}<br>GPS精度 ±${Math.round(actual[k].accuracy)}m</small></div><button class="secondary" onclick="removeActual('${k}')">解除</button></div>`).join("")||'<p class="note">登録済み座標はありません。</p>';
+}
+function draw(){
+ const c=$("plot"),ctx=c.getContext("2d");ctx.clearRect(0,0,c.width,c.height);
+ const vals=Object.values(planned),max=Math.max(350,...vals.map(q=>Math.max(Math.abs(q.x),Math.abs(q.y))))*1.25,scale=520/(2*max),cx=350,cy=325,pt=q=>({x:cx+q.x*scale,y:cy-q.y*scale});
+ ctx.strokeStyle="#e7edf0";ctx.lineWidth=1;for(let i=-4;i<=4;i++){ctx.beginPath();ctx.moveTo(cx+i*65,35);ctx.lineTo(cx+i*65,615);ctx.stroke();ctx.beginPath();ctx.moveTo(45,cy+i*65);ctx.lineTo(655,cy+i*65);ctx.stroke()}
+ ctx.fillStyle="#526875";ctx.font="15px sans-serif";ctx.fillText("N ↑",cx+8,25);
+ const w=v(settings().wind,max*.8),a=pt({x:-w.x,y:-w.y}),b=pt(w);ctx.strokeStyle="#d18b34";ctx.setLineDash([8,6]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.setLineDash([]);
+ const keys=getKeys();
+ // Draw course marks and the two line segments explicitly.
+function drawSegment(a,b,color,width=4){if(!planned[a]||!planned[b])return;let p1=pt(planned[a]),p2=pt(planned[b]);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.stroke()}
+ drawSegment("4S","4P","#16845b",5);drawSegment("F1","F2","#c34c45",5);drawSegment("4P","R","#c34c45",5);
+ if(planned["4P"]&&planned["R"]){
+   // Reverse the finish-line direction only: rescue-boat side -> 4P side.
+   const a=pt(planned["R"]),b=pt(planned["4P"]),ang=Math.atan2(b.y-a.y,b.x-a.x),t={x:a.x+(b.x-a.x)*.55,y:a.y+(b.y-a.y)*.55};
+   ctx.strokeStyle="#c34c45";ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(t.x,t.y);ctx.lineTo(t.x-11*Math.cos(ang-.48),t.y-11*Math.sin(ang-.48));ctx.moveTo(t.x,t.y);ctx.lineTo(t.x-11*Math.cos(ang+.48),t.y-11*Math.sin(ang+.48));ctx.stroke();
+ }
+ if(finishMidpointPlan){
+   const m=pt(finishMidpointPlan);ctx.fillStyle="#8b4ab5";ctx.beginPath();ctx.arc(m.x,m.y,6,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#713b91";ctx.font="bold 12px sans-serif";ctx.fillText("中点M",m.x+9,m.y+15);
+ }
+ keys.forEach(k=>{let q=pt(planned[k]);ctx.fillStyle=(k==="F1"||k==="F2")?"#c34c45":(k==="4S"||k==="4P")?"#16845b":"#1684b5";ctx.beginPath();ctx.arc(q.x,q.y,8,0,Math.PI*2);ctx.fill();ctx.fillStyle="#17313f";ctx.font="bold 14px sans-serif";ctx.fillText(k,q.x+10,q.y-9)});
+ const o=origin();if(o)keys.forEach(k=>{if(!actual[k])return;let r=inverse(o,actual[k]),xy=v(r.bearing,r.dist),q=pt(xy),p=pt(planned[k]);ctx.strokeStyle="#c34c45";ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle="#c34c45";ctx.beginPath();ctx.arc(q.x,q.y,7,0,Math.PI*2);ctx.fill()});
+ ctx.fillStyle="#526875";ctx.font="13px sans-serif";ctx.fillText("青：計画マーク　緑：4S-4Pライン　赤：フィニッシュライン／実測位置　橙：風軸（1-4間の補助線は非表示）",18,640);
+}
+function diagnostics(){
+ const cfg=settings(),p1=actual["1"],p4=actual["4"];
+ $("plannedDist").textContent=`${cfg.d14.toFixed(0)}m`;
+ $("plannedBearing").textContent=`${cfg.wind.toFixed(1)}°`;
+
+ // Browser GPS accuracy is a radius estimate, not a guaranteed error bound.
+ // Combine endpoint accuracies by root-sum-square for line measurements.
+ const accOf=a=>Number.isFinite(a?.accuracy)&&a.accuracy>0?a.accuracy:null;
+ const combinedAcc=(a,b)=>{
+   const x=accOf(a),y=accOf(b);
+   return x===null||y===null?null:Math.hypot(x,y);
+ };
+ const classify=(error,tolerance)=>{
+   if(tolerance===null)return {label:"精度判定不可",cls:"review"};
+   if(error<=tolerance)return {label:"GPS誤差の範囲内",cls:"ok"};
+   if(error<=2*tolerance)return {label:"再測位して確認",cls:"review"};
+   return {label:"修正候補",cls:"warn"};
+ };
+ const badge=(x)=>`<span class="diag-badge ${x.cls}">${x.label}</span>`;
+ const signed=x=>`${x>=0?"+":""}${x.toFixed(1)}`;
+ const directionName=b=>{
+   const dirs=["北","北東","東","南東","南","南西","西","北西"];
+   return dirs[Math.round(norm(b)/45)%8];
+ };
+
+ // Main course axis: measured 1 -> 4 distance and bearing.
+ if(p1&&p4){
+   const r=inverse(p1,p4),acc=combinedAcc(p1,p4);
+   $("actualDist").textContent=`${r.dist.toFixed(1)}m`;
+   $("actualBearing").textContent=`${r.bearing.toFixed(1)}°`;
+   const distDiff=r.dist-cfg.d14;
+   const angleDiff=((r.bearing-cfg.wind+540)%360)-180;
+   const lengthState=classify(Math.abs(distDiff),acc);
+   const angleTolerance=acc===null?null:deg(Math.atan2(acc,Math.max(1,r.dist)));
+   const angleState=classify(Math.abs(angleDiff),angleTolerance);
+   $("diagStatus").innerHTML=
+     `1-4距離差 <strong>${signed(distDiff)}m</strong> ${badge(lengthState)}<br>`+
+     `風軸との差 <strong>${signed(angleDiff)}°</strong> ${badge(angleState)}<br>`+
+     `<small>両端のGPS精度から算出した目安：距離 ±${acc===null?"—":acc.toFixed(1)+"m"} ／ 方位 ±${angleTolerance===null?"—":angleTolerance.toFixed(1)+"°"}</small>`;
+ }else{
+   $("actualDist").textContent="—";$("actualBearing").textContent="—";
+   $("diagStatus").textContent="1番・4番マークの実測座標を登録してください。";
+ }
+
+ let extra="";
+ if(cfg.course==="triangle"){
+   const p3=actual["3"];
+   if(p1&&p4&&p3){
+     const a=inverse(p1,p4),b=inverse(p1,p3);
+     const included=Math.abs(((b.bearing-a.bearing+540)%360)-180);
+     extra=`<div class="kpi" style="margin-top:9px"><small>実測 1番から見た1-4／1-サイド角</small><strong>${included.toFixed(1)}°</strong><small>設定角：60.0° ／ 誤差 ${(included-60).toFixed(1)}°</small></div>`;
+   }else{
+     extra=`<div class="status">トライアングルの角度診断には1番・4番・サイドマークの登録が必要です（設定角60°）。</div>`;
+   }
+ }
+ if(cfg.course==="practice"||cfg.course==="practiceLine"){
+   extra=`<div class="status">練習コースの基本コース角は1番・4番の実測位置から診断します。ラインは両端のGPS精度を考慮して評価します。</div>`;
+ }
+ let extraNode=document.getElementById("angleExtra");
+ if(!extraNode){extraNode=document.createElement("div");extraNode.id="angleExtra";$("diagStatus").after(extraNode);}
+ extraNode.innerHTML=extra;
+
+ // Per-mark error and a practical move direction from the measured position
+ // back toward the planned coordinate.
+ $("errors").innerHTML=`<table><thead><tr><th>マーク</th><th>位置誤差・判定</th><th>修正の目安</th></tr></thead><tbody>${getKeys().map(k=>{
+   const g=planGeo(k),a=actual[k];
+   if(!g||!a)return `<tr><td>${labels[k]||k}</td><td colspan="2">基準位置またはGPS未登録</td></tr>`;
+   const err=inverse(g,a),move=inverse(a,g),acc=accOf(a),state=classify(err.dist,acc);
+   const moveText=state.cls==="warn"?
+     `${directionName(move.bearing)}へ ${move.dist.toFixed(1)}m`:
+     state.cls==="review"?"再測位後に判断":"移動不要（測位誤差内）";
+   return `<tr><td>${labels[k]||k}</td><td>${err.dist.toFixed(1)}m<br>${badge(state)}<br><small>GPS精度 ±${acc===null?"不明":acc.toFixed(1)+"m"}</small></td><td>${moveText}</td></tr>`;
+ }).join("")}</tbody></table><p class="note">修正方向は「現在の実測位置から計画位置へ」の方向です。GPS精度は端末が示す推定値であり、誤差を完全に保証するものではありません。</p>`;
+
+ // Compare each measured line with its planned length and bearing.
+ const lineRows=[];
+ function addLineRow(label,ak,bk,pk,qk){
+   const aa=actual[ak],bb=actual[bk],pa=planned[pk],pb=planned[qk];
+   if(!aa||!bb){
+     lineRows.push(`<tr><td>${label}</td><td colspan="4">${labels[ak]||ak}・${labels[bk]||bk}をGPS登録してください</td></tr>`);
+     return;
+   }
+   const measured=inverse(aa,bb),acc=combinedAcc(aa,bb);
+   if(!pa||!pb){
+     lineRows.push(`<tr><td>${label}</td><td colspan="4">計画ライン情報がありません</td></tr>`);
+     return;
+   }
+   const dx=pb.x-pa.x,dy=pb.y-pa.y,plen=Math.hypot(dx,dy);
+   const pbear=norm(deg(Math.atan2(dx,dy)));
+   const lengthDelta=measured.dist-plen;
+   const bearingDelta=((measured.bearing-pbear+540)%360)-180;
+   const lengthState=classify(Math.abs(lengthDelta),acc);
+   const bearingTolerance=acc===null?null:deg(Math.atan2(acc,Math.max(1,measured.dist)));
+   const bearingState=classify(Math.abs(bearingDelta),bearingTolerance);
+   lineRows.push(`<tr><td>${label}</td><td>${measured.dist.toFixed(1)}m<br><small>計画 ${plen.toFixed(1)}m ／ 差 ${signed(lengthDelta)}m</small><br>${badge(lengthState)}</td><td>${measured.bearing.toFixed(1)}°<br><small>計画 ${pbear.toFixed(1)}° ／ 差 ${signed(bearingDelta)}°</small><br>${badge(bearingState)}</td><td>${acc===null?"不明":"±"+acc.toFixed(1)+"m"}</td><td><small>長さ判定：${lengthState.label}<br>方位判定：${bearingState.label}</small></td></tr>`);
+ }
+ if(cfg.course==="practiceLine"){
+   addLineRow("スタートライン 4S→4P","4S","4P","4S","4P");
+   addLineRow("フィニッシュライン F1→F2","F1","F2","F1","F2");
+ }else if(cfg.course==="practice"){
+   addLineRow("フィニッシュライン 4P→レスキュー","4P","R","4P","R");
+ }
+
+ $("lineDiag").innerHTML=lineRows.length
+   ?`<table><thead><tr><th>ライン</th><th>実測長</th><th>実測方位</th><th>合成GPS精度</th><th>評価</th></tr></thead><tbody>${lineRows.join("")}</tbody></table><p class="note">ライン両端のGPS精度を二乗和平方根で合成し、長さ・方位の差が測位誤差の目安内かを判定しています。</p>`
+   :"このコース形式ではライン診断はありません。";
+}
+function save(){try{localStorage.setItem("dokkyoMarkAssistantV02",JSON.stringify({actual,baseLat:$("baseLat").value,baseLon:$("baseLon").value,vals:Object.fromEntries(["course","wind","d14","startDist","finishDist","finishLine"].map(k=>[k,$(k).value]))}))}catch(e){}}
+function load(){try{let x=JSON.parse(localStorage.getItem("dokkyoMarkAssistantV02")||"null");if(!x)return;actual=x.actual||{};$("baseLat").value=x.baseLat||"";$("baseLon").value=x.baseLon||"";Object.entries(x.vals||{}).forEach(([k,v])=>$(k).value=v)}catch(e){}}
+function renderAll(){renderLists();draw();diagnostics();$("mapStatus").textContent=origin()?"基準位置を設定済み。":"基準位置未設定。模式図は相対配置です。";save()}
+function removeActual(k){delete actual[k];renderAll()}
+function updatePracticeFields(){
+ const c=$("course").value;
+ const practice=["practice","practiceLine"].includes(c);
+ $("practiceFields").hidden=!practice;
+ $("finishDistField").hidden=c!=="practiceLine";
+ $("finishLineField").hidden=c!=="practiceLine";
+}
+$("course").onchange=()=>{updatePracticeFields();makePlan()};
+$("generate").onclick=makePlan;
+$("baseGps").onclick=()=>gps((f,e)=>{if(!f){$("baseStatus").textContent=e;return}$("baseLat").value=f.lat.toFixed(6);$("baseLon").value=f.lon.toFixed(6);$("baseStatus").textContent=`基準位置を登録しました。GPS精度 ±${Math.round(f.accuracy)}m`;renderAll()});
+$("capture").onclick=()=>{let k=$("gpsMark").value;gps((f,e)=>{if(!f){$("gpsStatus").textContent=e;return}actual[k]=f;$("gpsStatus").textContent=`${labels[k]||k}を登録。${f.lat.toFixed(6)}, ${f.lon.toFixed(6)} ／ 精度 ±${Math.round(f.accuracy)}m`;renderAll()})};
+$("clearGps").onclick=()=>{if(confirm("実測座標をすべて削除しますか？")){actual={};renderAll();$("gpsStatus").textContent="実測座標を削除しました。"}};
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll("main section").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab));renderAll()});
+["wind","d14","startDist","finishDist","finishLine","baseLat","baseLon"].forEach(k=>$(k).addEventListener("change",()=>makePlan()));
+load();updatePracticeFields();makePlan();
+</script>
+</body></html>
