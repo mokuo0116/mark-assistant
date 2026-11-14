@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#102b3f">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<title>DOKKYO MARK ASSISTANT v2.4</title>
+<title>DOKKYO MARK ASSISTANT v2.5</title>
 <style>
 :root{--navy:#102b3f;--blue:#1676a5;--bg:#f3f6f8;--ink:#17232d;--muted:#657784;--line:#d8e1e7;--green:#16845b;--red:#c34c45}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif}
@@ -37,7 +37,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}td,th{text-align:left;p
 </style>
 </head>
 <body>
-<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>MARK ASSISTANT <span style="font-size:11px;font-weight:500;opacity:.7">BETA 2.4</span></h1></header>
+<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>MARK ASSISTANT <span style="font-size:11px;font-weight:500;opacity:.7">BETA 2.5</span></h1></header>
 <nav><button class="active" data-tab="setting">コース設定</button><button data-tab="map">配置図</button><button data-tab="gps">GPS登録</button><button data-tab="analysis">コース診断</button></nav>
 <main>
 <section id="setting" class="active">
@@ -51,11 +51,11 @@ table{width:100%;border-collapse:collapse;font-size:12px}td,th{text-align:left;p
   <div id="practiceFields" hidden>
    <h2 style="margin-top:12px">練習コース追加設定</h2>
    <div class="grid">
-    <div class="field"><label>4S-4P間隔／スタートライン長（m）</label><input id="startDist" type="number" min="1" value="100"></div>
+    <div class="field"><label>スタートライン全長（4S–4P間・m）</label><input id="startDist" type="number" min="1" value="100"><small class="note">入力値が4Sと4Pの間の全長になります（片側の長さではありません）。</small></div>
     <div class="field" id="finishDistField"><label>4-フィニッシュ基準距離（m）</label><input id="finishDist" type="number" min="1" value="200"></div>
     <div class="field" id="finishLineField"><label>フィニッシュライン長（m）</label><input id="finishLine" type="number" min="1" value="50"></div>
    </div>
-   <p class="note">練習コースでは4Pを配置原点として4S・4Pを左右対称に配置し、間隔をスタートライン長で固定します。ラインなしでは、4Sから風軸+120°、4Pから風軸−160°に引いた2本の半直線の交点をレスキュー艇の待機位置とします。ラインなしのフィニッシュ位置は角度とスタートライン長だけで決まるため、フィニッシュ距離・ライン長の追加設定はありません。ラインありの場合のみ、フィニッシュ基準距離とフィニッシュライン長を設定します。</p>
+   <p class="note">練習コースでは4Pを配置原点として4S・4Pを左右対称に配置します。入力するスタートライン全長は4S–4P間の実際の距離です。ラインなしでは、4Sから風軸+120°、4Pから風軸−160°に引いた2本の半直線の交点をレスキュー艇の待機位置とします。ラインなしのフィニッシュ位置は角度とスタートライン長だけで決まるため、フィニッシュ距離・ライン長の追加設定はありません。ラインありの場合のみ、フィニッシュ基準距離とフィニッシュライン長を設定します。</p>
   </div>
   <p class="note">風軸は「風が吹いてくる方向」を北=000°、東=090°の真方位で入力します。コースの1番マークを風上側、4番マークを風下側として生成します。</p>
   <button class="primary full" id="generate">コースを生成</button>
@@ -99,7 +99,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}td,th{text-align:left;p
  <div class="card"><h2>各マークの設置誤差</h2><div id="errors"></div></div>
  <div class="card"><h2>ライン診断</h2><div id="lineDiag" class="status">練習コースのライン両端を登録すると実測値を表示します。</div></div>
 </section>
-<div class="footer">DOKKYO MARK ASSISTANT · BETA 2.4<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
+<div class="footer">DOKKYO MARK ASSISTANT · BETA 2.5<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
@@ -363,14 +363,17 @@ function diagnostics(){
    lineRows.push(`<tr><td>${label}</td><td>${measured.dist.toFixed(1)}m<br><small>計画 ${plen.toFixed(1)}m ／ 差 ${signed(lengthDelta)}m</small><br>${badge(lengthState)}</td><td>${measured.bearing.toFixed(1)}°<br><small>計画 ${pbear.toFixed(1)}° ／ 差 ${signed(bearingDelta)}°</small><br>${badge(bearingState)}</td><td>${acc===null?"不明":"±"+acc.toFixed(1)+"m"}</td><td><small>長さ判定：${lengthState.label}<br>方位判定：${bearingState.label}</small></td></tr>`);
  }
  if(cfg.course==="practiceLine"){
+   // The start line is independently diagnosable; finish-line data is optional.
    addLineRow("スタートライン 4S→4P","4S","4P","4S","4P");
    addLineRow("フィニッシュライン F1→F2","F1","F2","F1","F2");
  }else if(cfg.course==="practice"){
-   addLineRow("フィニッシュライン 4P→レスキュー","4P","R","4P","R");
+   // Even without a separate finish line, the 4S-4P start line must be checked.
+   addLineRow("スタートライン 4S→4P","4S","4P","4S","4P");
+   addLineRow("4P→レスキュー艇ライン","4P","R","4P","R");
  }
 
  $("lineDiag").innerHTML=lineRows.length
-   ?`<table><thead><tr><th>ライン</th><th>実測長</th><th>実測方位</th><th>合成GPS精度</th><th>評価</th></tr></thead><tbody>${lineRows.join("")}</tbody></table><p class="note">ライン両端のGPS精度を二乗和平方根で合成し、長さ・方位の差が測位誤差の目安内かを判定しています。</p>`
+   ?`<table><thead><tr><th>ライン</th><th>実測長</th><th>実測方位</th><th>合成GPS精度</th><th>評価</th></tr></thead><tbody>${lineRows.join("")}</tbody></table><p class="note">スタートラインの計画全長：${cfg.startDist.toFixed(1)}m（入力値そのものが4S–4P間の全長です）。ライン両端のGPS精度を二乗和平方根で合成し、長さ・方位の差が測位誤差の目安内かを判定しています。</p>`
    :"このコース形式ではライン診断はありません。";
 }
 // ============================================================
