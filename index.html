@@ -628,7 +628,7 @@ function updateHakkeiArea(){
 }
 function bearingText(n){return `${String(Math.round(n)%360).padStart(3,"0")}°`}
 function navUpdate(prefix,items,position,map,selected,setSelected,resolve,inverseFn){
- const select=$(prefix+'NavTarget'),readout=$(prefix+'NavReadout'),hint=$(prefix+'NavHint');
+ const select=$(prefix ? prefix+'NavTarget' : 'navTarget'),readout=$(prefix ? prefix+'NavReadout' : 'navReadout'),hint=$(prefix ? prefix+'NavHint' : 'navHint');
  const keys=Object.keys(items||{}).filter(k=>k!=="R"&&k!=="finish"&&k!=="signal"&&k!=="outer");
  if(!keys.length){select.innerHTML='<option value="">計画マークなし</option>';readout.textContent='計画マークがありません';hint.textContent='コース生成ボタンを押し、計画マークが作成されたことを確認してください。';return;}
  if(!keys.includes(selected)){selected=keys[0];setSelected(selected);}
@@ -993,15 +993,15 @@ $('raceUseStart4').addEventListener('click',()=>{try{const x=raceCalc().diagnost
 ['raceWS','raceWind','raceSignalLat','raceSignalLon','raceStartLength','raceStartD4','raceGW','raceUseStartGeometry'].forEach(id=>$(id).addEventListener('change',raceCalculate));
 // RAS運営LINEメッセージの一括読み込み。説明文・見出し・余分な改行は無視する。
 function rasParseDmm(text){
- const rx=/([NS])\s*(\d{1,3})\s*[°º]\s*(\d+(?:\.\d+)?)\s*['′’]/i;
- const re=/([EW])\s*(\d{1,3})\s*[°º]\s*(\d+(?:\.\d+)?)\s*['′’]/i;
+ const rx=/([NS])\s*(\d{1,3})\s*[°º]\s*(\d+(?:\.\d+)?)\s*['′’＇]/i;
+ const re=/([EW])\s*(\d{1,3})\s*[°º]\s*(\d+(?:\.\d+)?)\s*['′’＇]/i;
  function coord(str){const a=str.match(rx),b=str.match(re);if(!a||!b)return null;const lat=(+a[2]+(+a[3])/60)*(a[1].toUpperCase()==='S'?-1:1);const lon=(+b[2]+(+b[3])/60)*(b[1].toUpperCase()==='W'?-1:1);return{lat,lon};}
  const urls=[...text.matchAll(/https?:\/\/[^\s<>"']+/g)].map(m=>m[0].replace(/[),、。]+$/,''));
  const parsed=urls.map(raw=>{try{const u=new URL(raw);return{url:u,params:u.searchParams,raw}}catch{return null}}).filter(Boolean);
  const findUrl=fn=>parsed.find(x=>fn(x.params.get('course')||''));
  const start=findUrl(c=>/etcetera|start|etc/i.test(c));
  const course=findUrl(c=>/trapezoid|\blr\b|\blg\b/i.test(c));
- const labelled=(label)=>{const lines=text.split(/\r?\n/);for(let i=0;i<lines.length;i++){if(label.test(lines[i])){for(let j=i+1;j<Math.min(i+4,lines.length);j++){const c=coord(lines[j]);if(c)return c;}}}return null;};
+ const labelled=(label)=>{const lines=text.split(/\r?\n/);for(let i=0;i<lines.length;i++){if(label.test(lines[i])){for(let j=i;j<Math.min(i+4,lines.length);j++){const c=coord(lines[j]);if(c)return c;}}}return null;};
  const signal=labelled(/シグナルボート|シグナル艇/i)||(start?(()=>{const q=start.params;const lat=Number(q.get('icd'))+Number(q.get('icm'))/60,lon=Number(q.get('kcd'))+Number(q.get('kcm'))/60;return Number.isFinite(lat)&&Number.isFinite(lon)?{lat,lon}:null;})():null);
  const mark4=labelled(/マーク\s*4|マーク４|４番マーク|4番マーク/i)||(course?(()=>{const q=course.params;const lat=Number(q.get('id'))+Number(q.get('im'))/60,lon=Number(q.get('kd'))+Number(q.get('km'))/60;return Number.isFinite(lat)&&Number.isFinite(lon)?{lat,lon}:null;})():null);
  if(!start&&!course)throw Error('RASのスタート用またはコース用URLが見つかりません。');
@@ -1020,7 +1020,7 @@ function rasImportMessage(){
   if(qs){set('raceWS',qs.get('ws'));set('raceStartLength',qs.get('s'));set('raceStartD4',qs.get('d4'));if(qs.has('gw'))set('raceGW',qs.get('gw'));if(!raceFinishLengthTouched){const sl=Number($('raceStartLength').value);if(Number.isFinite(sl)&&sl>0)$('raceFinishLineLength').value=(sl/5).toFixed(1);}}
   if(qc){if(data.type){$('raceCourse').value=data.type;$('raceTrapFields').hidden=data.type!=='trapezoid';}set('raceWind',qc.get('w'));set('raceD',qc.get('d'));set('raceA',qc.get('a'));set('raceB',qc.get('b'));set('raceR412',qc.get('r412'));set('raceR123',qc.get('r123'));set('raceF',qc.get('f'));set('raceR23F',qc.get('r23f'));if(!qs)set('raceWS',qc.get('ws'));if(!qs)set('raceGW',qc.get('gw'));}
   raceCalculate();
-  $('rasImportStatus').textContent=`読み込み完了：URL ${data.urls}件を解析しました。${data.signal?'シグナルボート座標':'シグナルボート座標なし'}／${data.mark4?'マーク4座標':'マーク4座標なし'}。地図と入力値を確認してください。`;
+  $('rasImportStatus').textContent=`読み込み完了：RAS URL ${data.urls}件を解析しました。${data.signal?'シグナルボート座標を取得':'シグナルボート座標なし'}／${data.mark4?'マーク4座標を取得':'マーク4座標なし'}。${data.start?'スタート設定':'スタートURLなし'}・${data.course?'コース設定':'コースURLなし'}。地図と入力値を確認してください。`;
  }catch(e){$('rasImportStatus').textContent='読み込みできません：'+e.message;}
 }
 $('rasImport').addEventListener('click',rasImportMessage);
