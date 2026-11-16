@@ -115,7 +115,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
   <button class="primary full" id="liveGps" style="margin-top:10px">リアルタイム現在地を表示</button>
   <div class="status" id="liveStatus">現在地の追跡は停止中です。</div>
   <div id="liveReadings" class="note" style="margin-top:8px">現在地を取得すると、計画ポイントまでの距離・方位を表示します。</div>
-  <div class="status" id="navPanel" style="margin-top:12px"><strong>マーク誘導</strong><div class="race-grid" style="margin-top:8px"><div class="field"><label>誘導先マーク</label><select id="navTarget"></select></div><div class="field" style="display:flex;align-items:end"><button class="secondary full" id="navNext">次のマークへ</button></div></div><div id="navReadout" style="font-size:18px;font-weight:800;margin-top:8px">GPS待機中</div><small id="navHint">誘導先を選択すると地図上で位置を確認できます。</small></div>
+  <div class="status" id="navPanel" style="margin-top:12px"><strong>マーク誘導</strong><div class="race-grid" style="margin-top:8px"><div class="field"><label>誘導先マーク</label><select id="navTarget"></select></div><div class="field" style="display:flex;align-items:end"><button class="secondary full" id="navNext">次のマークへ</button></div></div><div id="navReadout" style="font-size:18px;font-weight:800;margin-top:8px">コース計算待ち</div><small id="navHint">誘導先を選択すると地図上で位置を確認できます。</small></div>
   <details class="help"><summary>地図の注意事項</summary><p class="note">© OpenStreetMap contributors。重ね合わせ画像・帆走区域は参考表示であり、海図や航行安全情報の代わりにはなりません。水深・障害物・航行規制は最新の公式情報で確認してください。</p></details></div>
  <div class="card"><h2>計画コース・実測位置</h2><p class="note">計画コースと実測位置の相対配置図です。紫のMはラインあり練習コースのフィニッシュ中点です。</p><canvas id="plot" width="700" height="650"></canvas><div class="status" id="mapStatus"></div></div>
  <div class="card"><h2>マーク一覧</h2><div id="markList"></div></div>
@@ -193,7 +193,7 @@ https://..."></textarea></div>
   <div class="field" style="margin-top:8px"><label style="display:flex;align-items:center;gap:8px;color:var(--ink);font-size:13px"><input id="raceHakkeiAreaToggle" type="checkbox" style="width:auto;transform:scale(1.15)">八景島マリーナ帆走区域（概算）を表示</label><small class="note">公式境界ではありません。</small></div>
   <button class="primary full" id="raceLiveGps" style="margin-top:10px">リアルタイム現在地を表示</button><div class="status" id="raceLiveStatus">現在地の追跡は停止中です。</div>
   <div id="raceLiveReadings" class="note" style="margin-top:8px">現在地を取得すると、計画マークまでの距離・方位を表示します。</div>
-  <div class="status" id="raceNavPanel" style="margin-top:12px"><strong>マーク誘導</strong><div class="race-grid" style="margin-top:8px"><div class="field"><label>誘導先マーク</label><select id="raceNavTarget"></select></div><div class="field" style="display:flex;align-items:end"><button class="secondary full" id="raceNavNext">次のマークへ</button></div></div><div id="raceNavReadout" style="font-size:18px;font-weight:800;margin-top:8px">GPS待機中</div><small id="raceNavHint">誘導先を選択すると地図上で位置を確認できます。</small></div>
+  <div class="status" id="raceNavPanel" style="margin-top:12px"><strong>マーク誘導</strong><div class="race-grid" style="margin-top:8px"><div class="field"><label>誘導先マーク</label><select id="raceNavTarget"></select></div><div class="field" style="display:flex;align-items:end"><button class="secondary full" id="raceNavNext">次のマークへ</button></div></div><div id="raceNavReadout" style="font-size:18px;font-weight:800;margin-top:8px">コース計算待ち</div><small id="raceNavHint">誘導先を選択すると地図上で位置を確認できます。</small></div>
   <p class="note">マークをタップすると座標を確認できます。地図は計画範囲に自動ズームします。帆走区域・重ね合わせ画像は参考表示であり、海図や航行安全情報の代わりにはなりません。</p></div>
  <div class="card"><h2>計画位置と実測位置の誤差</h2><p class="note">青＝RAS計画位置、黄＝GPS実測位置。破線は計画位置と実測位置のずれを示します。距離・方位は実測位置から計画位置への修正方向です。</p><div id="raceErrorSummary" class="status">RAS計画を計算し、マークをGPS登録すると誤差を表示します。</div><div id="raceErrorTable"></div></div>
  <div class="card"><h2>計算されたマーク座標</h2><div id="racePoints" class="race-results"><p class="note">「コースを計算」を押すと座標を表示します。</p></div></div>
@@ -665,11 +665,15 @@ function stopLiveGps(){
 }
 function startLiveGps(){
  if(!navigator.geolocation){$("liveStatus").textContent="このブラウザはGPSに対応していません。";return}
+ if(!window.isSecureContext){$("liveStatus").textContent="位置情報はHTTPS接続でのみ利用できます。ページをHTTPSで開き直してください（localhostを除く）。";return}
  if(liveWatchId!==null){stopLiveGps();return}
  $("liveGps").textContent="現在地の追跡を停止";
  if(realMap){realMap._userMovedView=false;realMap._liveCentered=false;}
- $("liveStatus").textContent="GPS測位中…";
+ $("liveStatus").textContent="GPS測位要求を送信しました。ブラウザの位置情報許可を確認しています…";
+ let received=false;
+ const waitingTimer=setTimeout(()=>{if(!received&&liveWatchId!==null){$("liveStatus").textContent="GPS応答待ちです。ブラウザのアドレスバー左側のサイト設定で位置情報を許可し、屋外で数十秒お待ちください。";}},12000);
  liveWatchId=navigator.geolocation.watchPosition(pos=>{
+  received=true;clearTimeout(waitingTimer);
   livePosition={lat:pos.coords.latitude,lon:pos.coords.longitude,accuracy:pos.coords.accuracy,time:pos.timestamp};
   if(realMap){
    const ll=[livePosition.lat,livePosition.lon];
@@ -685,9 +689,11 @@ function startLiveGps(){
   $("liveStatus").textContent=`現在地を受信中：${livePosition.lat.toFixed(6)}, ${livePosition.lon.toFixed(6)} ／ 精度 ±${Math.round(livePosition.accuracy)}m`;
   updateLiveReadings();updateNav();
  },err=>{
-  $("liveStatus").textContent=({1:"位置情報の許可がありません。",2:"現在位置を取得できません。",3:"測位がタイムアウトしました。"}[err.code]||err.message);
-  stopLiveGps();
- },{enableHighAccuracy:true,maximumAge:1000,timeout:20000});
+  clearTimeout(waitingTimer);
+  const msg=({1:"位置情報が拒否されました。ブラウザのサイト設定で位置情報を許可してください。",2:"現在位置を取得できません。屋外で再試行してください。",3:"GPS測位がタイムアウトしました。空の開けた場所で再試行してください。"}[err.code]||`位置情報エラー：${err.message||"詳細不明"}`);
+  if(liveWatchId!==null){navigator.geolocation.clearWatch(liveWatchId);liveWatchId=null;}
+  $("liveGps").textContent="リアルタイム現在地を表示";$("liveStatus").textContent=msg;
+ },{enableHighAccuracy:true,maximumAge:0,timeout:30000});
 }
 function clearRealMapLayers(){
  if(realMapLayers.length){realMapLayers.forEach(x=>realMap.removeLayer(x));realMapLayers=[];}
@@ -893,9 +899,13 @@ function stopRaceLiveGps(){
 }
 function startRaceLiveGps(){
  if(!navigator.geolocation){$('raceLiveStatus').textContent='このブラウザはGPSに対応していません。';return;}
+ if(!window.isSecureContext){$('raceLiveStatus').textContent='位置情報はHTTPS接続でのみ利用できます。ページをHTTPSで開き直してください（localhostを除く）。';return;}
  if(raceLiveWatchId!==null){stopRaceLiveGps();return;}
- $('raceLiveGps').textContent='現在地の追跡を停止';$('raceLiveStatus').textContent='GPS測位中…';
+ $('raceLiveGps').textContent='現在地の追跡を停止';$('raceLiveStatus').textContent='GPS測位要求を送信しました。ブラウザの位置情報許可を確認しています…';
+ let received=false;
+ const waitingTimer=setTimeout(()=>{if(!received&&raceLiveWatchId!==null){$('raceLiveStatus').textContent='GPS応答待ちです。ブラウザのアドレスバー左側のサイト設定で位置情報を許可し、屋外で数十秒お待ちください。';}},12000);
  raceLiveWatchId=navigator.geolocation.watchPosition(pos=>{
+  received=true;clearTimeout(waitingTimer);
   raceLivePosition={lat:pos.coords.latitude,lon:pos.coords.longitude,accuracy:pos.coords.accuracy,time:pos.timestamp};
   if(raceMap){
    const ll=[raceLivePosition.lat,raceLivePosition.lon];
@@ -906,7 +916,7 @@ function startRaceLiveGps(){
   }
   $('raceLiveStatus').textContent=`現在地を受信中：${raceLivePosition.lat.toFixed(6)}, ${raceLivePosition.lon.toFixed(6)} ／ 精度 ±${Math.round(raceLivePosition.accuracy)}m`;
   updateRaceLiveReadings();updateRaceNav();
- },err=>{$('raceLiveStatus').textContent=({1:'位置情報の許可がありません。',2:'現在位置を取得できません。',3:'測位がタイムアウトしました。'}[err.code]||err.message);stopRaceLiveGps();},{enableHighAccuracy:true,maximumAge:1000,timeout:20000});
+ },err=>{clearTimeout(waitingTimer);const msg=({1:'位置情報が拒否されました。ブラウザのサイト設定で位置情報を許可してください。',2:'現在位置を取得できません。屋外で再試行してください。',3:'GPS測位がタイムアウトしました。空の開けた場所で再試行してください。'}[err.code]||`位置情報エラー：${err.message||'詳細不明'}`);if(raceLiveWatchId!==null){navigator.geolocation.clearWatch(raceLiveWatchId);raceLiveWatchId=null;}$('raceLiveGps').textContent='リアルタイム現在地を表示';$('raceLiveStatus').textContent=msg;},{enableHighAccuracy:true,maximumAge:0,timeout:30000});
 }
 function updateRaceNav(){const pts=raceComputed?.points||{};navUpdate("raceNav",pts,raceLivePosition,raceMap,raceNavSelected,v=>raceNavSelected=v,k=>pts[k]||null,(a,b)=>raceInverse(a,b,raceRadii(a.lat,a.lon)));}
 $("raceNavTarget").addEventListener("change",e=>{raceNavSelected=e.target.value;updateRaceNav();navFocus("raceNav",raceMap,raceNavSelected,k=>raceComputed?.points?.[k]||null);});
