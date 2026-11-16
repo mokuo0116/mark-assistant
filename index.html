@@ -51,7 +51,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 </style>
 </head>
 <body>
-<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>MARK ASSISTANT <span style="font-size:11px;font-weight:500;opacity:.7">BETA 3.4</span></h1></header>
+<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>MARK ASSISTANT <span style="font-size:11px;font-weight:500;opacity:.7">BETA 3.6</span></h1></header>
 <nav><button class="active" data-tab="setting">コース設定</button><button data-tab="map">配置図</button><button data-tab="gps">GPS登録</button><button data-tab="analysis">コース診断</button><button data-tab="race">レース運営</button></nav>
 <main>
 <section id="setting" class="active">
@@ -182,6 +182,8 @@ https://..."></textarea></div>
    <div class="field"><label>スタートライン長 s（m）</label><input id="raceStartLength" type="number" min="1" value="100"></div>
    <div class="field"><label>ライン中心–4距離 d4（m）</label><input id="raceStartD4" type="number" min="0" value="150"></div>
   </div>
+  <div class="field" style="margin:10px 0"><label><input id="raceUseStartGeometry" type="checkbox" checked> スタート設定から算出した4マークを基準にする（風軸・シグナル艇・距離の変更に追従）</label></div>
+  <div id="raceConsistency" class="status" style="margin-bottom:8px">4マーク座標の整合性：未計算</div>
   <button class="secondary full" id="raceUseStart4" style="margin-bottom:8px">スタート計算の4マーク座標をコース基準に反映</button><button class="primary full" id="raceCalculate">コースを計算・地図に表示</button>
   <div class="status" id="raceStatus">初期値はサンプルです。実際の設置前に入力値と座標を確認してください。</div>
  </div>
@@ -190,7 +192,7 @@ https://..."></textarea></div>
  <div class="race-warn">注意：これはRASの計算式を参考にした試作機能です。RASとの座標照合・実海面での検証が必要です。安全上重要な設置判断には、必ず公式情報・現場確認・複数人での照合を行ってください。</div>
 </section>
 
-<div class="footer">DOKKYO MARK ASSISTANT · BETA 3.4<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
+<div class="footer">DOKKYO MARK ASSISTANT · BETA 3.6<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
@@ -790,22 +792,29 @@ function raceMagDecl(lat,lon){return 8.2637+0.3077*(lat-37)-0.1288*(lon-138)-0.0
 function raceRadii(lat,lon){const ww=Math.sqrt(1-RACE_E2*Math.sin(rad(lat))**2);return {mm:RACE_RX*(1-RACE_E2)/Math.pow(ww,3),nn:RACE_RX/ww,ni:Math.cos(rad(lat))*RACE_RX/ww,dd:raceMagDecl(lat,lon)}}
 function raceStep(p,dist,bearing,r){return {lat:p.lat+deg(dist*Math.cos(rad(bearing-r.dd))/r.mm),lon:p.lon+deg(dist*Math.sin(rad(bearing-r.dd))/r.ni)}}
 function raceInverse(a,b,r){const dy=rad(b.lat-a.lat)*r.mm,dx=rad(b.lon-a.lon)*r.nn*Math.cos(rad(a.lat));return {distance:Math.hypot(dx,dy),bearing:norm(deg(Math.atan2(dx,dy))+raceMagDecl(a.lat,a.lon))}}
-function raceInput(){const n=id=>Number($(id).value);return {type:$('raceCourse').value,lat4:n('raceLat4'),lon4:n('raceLon4'),w:n('raceWind'),d:n('raceD'),a:n('raceA'),b:n('raceB'),r412:n('raceR412'),r123:n('raceR123'),f:n('raceF'),r23f:n('raceR23F'),finishLineLength:n('raceFinishLineLength'),gw:n('raceGW'),ws:n('raceWS'),signal:{lat:n('raceSignalLat'),lon:n('raceSignalLon')},s:n('raceStartLength'),d4:n('raceStartD4')}}
+function raceInput(){const n=id=>Number($(id).value);return {type:$('raceCourse').value,lat4:n('raceLat4'),lon4:n('raceLon4'),w:n('raceWind'),d:n('raceD'),a:n('raceA'),b:n('raceB'),r412:n('raceR412'),r123:n('raceR123'),f:n('raceF'),r23f:n('raceR23F'),finishLineLength:n('raceFinishLineLength'),gw:n('raceGW'),ws:n('raceWS'),useStartGeometry:$('raceUseStartGeometry').checked,signal:{lat:n('raceSignalLat'),lon:n('raceSignalLon')},s:n('raceStartLength'),d4:n('raceStartD4')}}
 function raceValidate(c){const finite=['lat4','lon4','w','d','f','r23f','finishLineLength','gw','ws','s','d4'];for(const k of finite)if(!Number.isFinite(c[k]))throw Error('入力値を数値で確認してください：'+k);if(c.lat4<-90||c.lat4>90||c.lon4<-180||c.lon4>180||c.signal.lat<-90||c.signal.lat>90||c.signal.lon<-180||c.signal.lon>180)throw Error('緯度・経度の範囲を確認してください。');if(c.d<=0||c.s<=0||c.finishLineLength<=0||c.gw<0||c.f<0||c.d4<0)throw Error('距離は0以上（1–4距離・スタートライン長は1以上）で入力してください。');if(c.type==='trapezoid'&&(!Number.isFinite(c.a)||!Number.isFinite(c.b)||!Number.isFinite(c.r412)||!Number.isFinite(c.r123)))throw Error('トラペゾイドの比率・角度を確認してください。');}
 function raceCalc(){
- const c=raceInput();raceValidate(c);const sig=JSON.stringify(c);if(raceActualConfigSignature&&raceActualConfigSignature!==sig)raceActual={};raceActualConfigSignature=sig;raceSaveGps();const p={},base={lat:c.lat4,lon:c.lon4},r=raceRadii(c.lat4,c.lon4),w=norm(c.w),ws=norm(c.ws);p['4']=base;
- p['1']=raceStep(base,c.d,w,r);
+ const c=raceInput();raceValidate(c);const sig=JSON.stringify(c);if(raceActualConfigSignature&&raceActualConfigSignature!==sig)raceActual={};raceActualConfigSignature=sig;raceSaveGps();const courseBase={lat:c.lat4,lon:c.lon4},w=norm(c.w),ws=norm(c.ws);
+ // RAS etc() style start-side mark-4 calculation. Keep both candidate centers for diagnostics.
+ const rs=raceRadii(c.signal.lat,c.signal.lon),aco=norm(ws-90),outer=raceStep(c.signal,c.s,aco,rs),center=raceStep(c.signal,c.s/2,aco,rs),start4=raceStep(center,c.d4,ws,rs);
+ const start4S=raceStep(start4,c.gw/2,norm(ws-90),rs),start4P=raceStep(start4,c.gw/2,norm(ws+90),rs);
+ const activeBase=c.useStartGeometry?start4:courseBase;
+ const activeR=raceRadii(activeBase.lat,activeBase.lon);
+ const centerDelta=raceInverse(courseBase,start4,raceRadii(courseBase.lat,courseBase.lon));
+ const p={};p['4']=activeBase;
+ p['1']=raceStep(activeBase,c.d,w,activeR);
  if(c.type==='trapezoid'){
-  const a12=norm(w-(180-c.r412));p['2']=raceStep(p['1'],c.a*c.d,a12,r);const a23=norm(a12-180+c.r123);p['3']=raceStep(p['2'],c.b*c.d,a23,r);
-  p['3S']=raceStep(p['3'],c.gw/2,norm(w-90),r);p['3P']=raceStep(p['3'],c.gw/2,norm(w+90),r);
-  p['finish']=raceStep(p['3P'],c.f,norm(w+c.r23f),r);
+  const a12=norm(w-(180-c.r412));p['2']=raceStep(p['1'],c.a*c.d,a12,activeR);const a23=norm(a12-180+c.r123);p['3']=raceStep(p['2'],c.b*c.d,a23,activeR);
+  p['3S']=raceStep(p['3'],c.gw/2,norm(w-90),activeR);p['3P']=raceStep(p['3'],c.gw/2,norm(w+90),activeR);
+  p['finish']=raceStep(p['3P'],c.f,norm(w+c.r23f),activeR);
  }else{
-  p['4S']=raceStep(base,c.gw/2,norm(ws-90),r);p['4P']=raceStep(base,c.gw/2,norm(ws+90),r);
-  const finBearing=c.type==='lr'?norm(w+c.r23f):norm(w-c.r23f);p['finish']=raceStep(p['4P'],c.f,finBearing,r);
+  p['4S']=raceStep(activeBase,c.gw/2,norm(ws-90),activeR);p['4P']=raceStep(activeBase,c.gw/2,norm(ws+90),activeR);
+  const finBearing=c.type==='lr'?norm(w+c.r23f):norm(w-c.r23f);const finishBaseMark=c.type==='lg'?p['4S']:p['4P'];p['finish']=raceStep(finishBaseMark,c.f,finBearing,activeR);
  }
  // Finish line: perpendicular to the vector from the final rounded mark to the RAS finish reference point.
  // LR/LG use course-side 4P; trapezoid uses gate mark 3P as the final rounding mark.
- const finalRoundedMark=c.type==='trapezoid'?p['3P']:p['4P'];
+ const finalRoundedMark=c.type==='trapezoid'?p['3P']:(c.type==='lg'?p['4S']:p['4P']);
  const approachBearing=raceInverse(finalRoundedMark,p['finish'],raceRadii(finalRoundedMark.lat,finalRoundedMark.lon)).bearing;
  let finishAxis=norm(approachBearing+90);
  // Select the end of the perpendicular axis that points toward the windward side.
@@ -813,11 +822,9 @@ function raceCalc(){
  const finishHalf=c.finishLineLength/2;
  p['finishBoat']=raceStep(p['finish'],finishHalf,finishAxis,raceRadii(p['finish'].lat,p['finish'].lon));
  p['finishPin']=raceStep(p['finish'],finishHalf,norm(finishAxis+180),raceRadii(p['finish'].lat,p['finish'].lon));
- // Start geometry follows RAS etc(): signal boat -> outer; midpoint -> mark 4.
- const rs=raceRadii(c.signal.lat,c.signal.lon),aco=norm(ws-90),outer=raceStep(c.signal,c.s,aco,rs),center=raceStep(c.signal,c.s/2,aco,rs),start4=raceStep(center,c.d4,ws,rs);
- const start4S=raceStep(start4,c.gw/2,norm(ws-90),rs),start4P=raceStep(start4,c.gw/2,norm(ws+90),rs);
- p['signal']=c.signal;p['outer']=outer;p['start4']=start4;p['startLineS']=start4S;p['startLineP']=start4P;
- raceComputed={config:c,points:p};return raceComputed;
+ // Keep a single physical 4S/4P pair on the map. The alternate candidate is diagnostics only.
+ p['signal']=c.signal;p['outer']=outer;
+ raceComputed={config:c,points:p,diagnostics:{courseBase,start4,centerDelta,start4S,start4P,course4S:raceStep(courseBase,c.gw/2,norm(ws-90),raceRadii(courseBase.lat,courseBase.lon)),course4P:raceStep(courseBase,c.gw/2,norm(ws+90),raceRadii(courseBase.lat,courseBase.lon))}};return raceComputed;
 }
 function raceCoord(p){const la=Math.floor(p.lat),lo=Math.floor(p.lon);return `N${la}°${((p.lat-la)*60).toFixed(4)}′ E${lo}°${((p.lon-lo)*60).toFixed(4)}′`;}
 function raceMarkLabel(k){return ({'1':'マーク1','2':'マーク2','3':'マーク3','4':'マーク4','3S':'3S（ゲート左舷）','3P':'3P（ゲート右舷）','4S':'コース側4S','4P':'コース側4P','finish':'フィニッシュ基準点','finishBoat':'フィニッシュ船（風上側）','finishPin':'フィニッシュピン（風下側）','signal':'シグナルボート','outer':'スタートライン外端','start4':'スタート側4マーク','startLineS':'スタートライン側マーク（左端）','startLineP':'スタートライン側マーク（右端）'}[k]||k)}
@@ -826,6 +833,10 @@ function raceRemoveGps(k){delete raceActual[k];raceSaveGps();raceRender();}
 function raceRender(){
  const data=raceComputed;if(!data)return;
  const entries=Object.entries(data.points).filter(([k])=>k!=='finish');
+ const dg=data.diagnostics;
+ const gateS=raceInverse(dg.course4S,dg.start4S,raceRadii(dg.course4S.lat,dg.course4S.lon)).distance;
+ const gateP=raceInverse(dg.course4P,dg.start4P,raceRadii(dg.course4P.lat,dg.course4P.lon)).distance;
+ $('raceConsistency').innerHTML=`<strong>4マーク整合性診断</strong><br>中心位置の差：${dg.centerDelta.distance.toFixed(1)}m（方位 ${dg.centerDelta.bearing.toFixed(1)}°）<br>4Sの差：${gateS.toFixed(1)}m ／ 4Pの差：${gateP.toFixed(1)}m<br>現在の採用基準：${data.config.useStartGeometry?'スタート設定から算出した4マーク':'コースURLの4マーク座標'}。${Math.max(dg.centerDelta.distance,gateS,gateP)>5?'座標差があります。入力値・風軸・距離を確認してください。':'両者は概ね一致しています。'}`;
  $('racePoints').innerHTML=entries.map(([k,p])=>{const a=raceActual[k];const delta=a?raceInverse(p,a,raceRadii(p.lat,p.lon)).distance:null;return `<div class="race-point"><strong>${raceMarkLabel(k)}</strong><small>${raceCoord(p)}<br>${p.lat.toFixed(7)}, ${p.lon.toFixed(7)}${a?`<br>実測：${a.lat.toFixed(7)}, ${a.lon.toFixed(7)}<br>計画との差：約${delta.toFixed(1)}m ／ GPS精度 ±${Math.round(a.accuracy||0)}m`:'<br>GPS未登録'}</small><div class="race-point-actions"><button class="secondary" data-race-gps="${k}">現在位置を登録</button>${a?`<button class="danger" data-race-remove="${k}">登録解除</button>`:''}</div></div>`}).join('');
  if(!raceMap){raceMap=L.map('raceMap');L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(raceMap);raceLayer=L.layerGroup().addTo(raceMap)}raceLayer.clearLayers();
  const coords={};for(const [k,v] of entries){const ll=[v.lat,v.lon];coords[k]=ll;L.circleMarker(ll,{radius:7,color:'#fff',weight:2,fillColor:k==='finishBoat'?'#16845b':k==='finishPin'?'#c34c45':k==='signal'?'#7046b8':'#1676a5',fillOpacity:1}).bindPopup(`<b>${raceMarkLabel(k)}</b><br>${raceCoord(v)}<br>${v.lat.toFixed(7)}, ${v.lon.toFixed(7)}`).addTo(raceLayer)}
@@ -844,7 +855,10 @@ $('raceCourse').addEventListener('change',()=>{$('raceTrapFields').hidden=$('rac
 $('raceFinishLineLength').addEventListener('input',()=>{raceFinishLengthTouched=true;});
 $('raceStartLength').addEventListener('input',()=>{if(!raceFinishLengthTouched){const n=Number($('raceStartLength').value);if(Number.isFinite(n)&&n>0)$('raceFinishLineLength').value=(n/5).toFixed(1);}});
 $('raceCalculate').addEventListener('click',raceCalculate);
-$('raceUseStart4').addEventListener('click',()=>{try{const x=raceCalc().points.start4;$('raceLat4').value=x.lat.toFixed(7);$('raceLon4').value=x.lon.toFixed(7);$('raceStatus').textContent='スタート設定から算出した4マーク座標をコース基準に反映しました。続けてコースを計算してください。';}catch(e){$('raceStatus').textContent='反映できません：'+e.message;}});
+$('raceUseStart4').addEventListener('click',()=>{try{const x=raceCalc().diagnostics.start4;$('raceLat4').value=x.lat.toFixed(7);$('raceLon4').value=x.lon.toFixed(7);$('raceUseStartGeometry').checked=false;raceCalculate();$('raceStatus').textContent='スタート設定から算出した4マーク座標をコースURL側の基準座標へ反映しました。';}catch(e){$('raceStatus').textContent='反映できません：'+e.message;}});
+// When the start-side geometry inputs change, recalculate immediately. With the default checkbox on,
+// the active course-side 4S/4P follow the newly calculated start-side 4-mark position.
+['raceWS','raceWind','raceSignalLat','raceSignalLon','raceStartLength','raceStartD4','raceGW','raceUseStartGeometry'].forEach(id=>$(id).addEventListener('change',raceCalculate));
 // RAS運営LINEメッセージの一括読み込み。説明文・見出し・余分な改行は無視する。
 function rasParseDmm(text){
  const rx=/([NS])\s*(\d{1,3})\s*[°º]\s*(\d+(?:\.\d+)?)\s*['′’]/i;
