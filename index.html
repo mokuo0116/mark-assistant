@@ -32,7 +32,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 .footer{text-align:center;color:#82919a;font-size:10px;padding:15px}
 @media(min-width:600px){main{padding:22px}}
 
-.race-point-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.race-point-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}\n.race-error-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}.race-error-table th,.race-error-table td{padding:8px 5px;border-bottom:1px solid var(--line);text-align:left}.race-error-table th{color:var(--muted);font-weight:700}.race-delta{font-weight:800;font-variant-numeric:tabular-nums}
 .race-point-actions button{font-size:12px;padding:6px 9px}
 </style>
 <style>
@@ -51,7 +51,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 </style>
 </head>
 <body>
-<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>MARK ASSISTANT <span style="font-size:11px;font-weight:500;opacity:.7">BETA 3.6</span></h1></header>
+<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>MARK ASSISTANT <span style="font-size:11px;font-weight:500;opacity:.7">BETA 3.9</span></h1></header>
 <nav><button class="active" data-tab="setting">コース設定</button><button data-tab="map">配置図</button><button data-tab="gps">GPS登録</button><button data-tab="analysis">コース診断</button><button data-tab="race">レース運営</button></nav>
 <main>
 <section id="setting" class="active">
@@ -115,6 +115,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
   <button class="primary full" id="liveGps" style="margin-top:10px">リアルタイム現在地を表示</button>
   <div class="status" id="liveStatus">現在地の追跡は停止中です。</div>
   <div id="liveReadings" class="note" style="margin-top:8px">現在地を取得すると、計画ポイントまでの距離・方位を表示します。</div>
+  <div class="status" id="navPanel" style="margin-top:12px"><strong>マーク誘導</strong><div class="race-grid" style="margin-top:8px"><div class="field"><label>誘導先マーク</label><select id="navTarget"></select></div><div class="field" style="display:flex;align-items:end"><button class="secondary full" id="navNext">次のマークへ</button></div></div><div id="navReadout" style="font-size:18px;font-weight:800;margin-top:8px">GPS待機中</div><small id="navHint">誘導先を選択すると地図上で位置を確認できます。</small></div>
   <details class="help"><summary>地図の注意事項</summary><p class="note">© OpenStreetMap contributors。重ね合わせ画像・帆走区域は参考表示であり、海図や航行安全情報の代わりにはなりません。水深・障害物・航行規制は最新の公式情報で確認してください。</p></details></div>
  <div class="card"><h2>計画コース・実測位置</h2><p class="note">計画コースと実測位置の相対配置図です。紫のMはラインあり練習コースのフィニッシュ中点です。</p><canvas id="plot" width="700" height="650"></canvas><div class="status" id="mapStatus"></div></div>
  <div class="card"><h2>マーク一覧</h2><div id="markList"></div></div>
@@ -187,12 +188,19 @@ https://..."></textarea></div>
   <button class="secondary full" id="raceUseStart4" style="margin-bottom:8px">スタート計算の4マーク座標をコース基準に反映</button><button class="primary full" id="raceCalculate">コースを計算・地図に表示</button>
   <div class="status" id="raceStatus">初期値はサンプルです。実際の設置前に入力値と座標を確認してください。</div>
  </div>
- <div class="card"><h2>レース海面図</h2><div id="raceMap" class="race-map"></div><p class="note">マークをタップすると座標を確認できます。地図表示には通信が必要です。</p></div>
+ <div class="card"><h2>レース海面図</h2><p class="note">青＝RAS計画位置／黄＝GPS実測位置／紫＝レスキュー艇の現在地。地図表示には通信が必要です。</p><div id="raceMap" class="race-map"></div>
+  <div class="field" style="margin-top:12px"><label style="display:flex;align-items:center;gap:8px;color:var(--ink);font-size:13px"><input id="raceSagamiOverlayToggle" type="checkbox" style="width:auto;transform:scale(1.15)">相模湾レース海面図（2024）を重ねて表示</label><small class="note">位置合わせは概算です。</small></div>
+  <div class="field" style="margin-top:8px"><label style="display:flex;align-items:center;gap:8px;color:var(--ink);font-size:13px"><input id="raceHakkeiAreaToggle" type="checkbox" style="width:auto;transform:scale(1.15)">八景島マリーナ帆走区域（概算）を表示</label><small class="note">公式境界ではありません。</small></div>
+  <button class="primary full" id="raceLiveGps" style="margin-top:10px">リアルタイム現在地を表示</button><div class="status" id="raceLiveStatus">現在地の追跡は停止中です。</div>
+  <div id="raceLiveReadings" class="note" style="margin-top:8px">現在地を取得すると、計画マークまでの距離・方位を表示します。</div>
+  <div class="status" id="raceNavPanel" style="margin-top:12px"><strong>マーク誘導</strong><div class="race-grid" style="margin-top:8px"><div class="field"><label>誘導先マーク</label><select id="raceNavTarget"></select></div><div class="field" style="display:flex;align-items:end"><button class="secondary full" id="raceNavNext">次のマークへ</button></div></div><div id="raceNavReadout" style="font-size:18px;font-weight:800;margin-top:8px">GPS待機中</div><small id="raceNavHint">誘導先を選択すると地図上で位置を確認できます。</small></div>
+  <p class="note">マークをタップすると座標を確認できます。地図は計画範囲に自動ズームします。帆走区域・重ね合わせ画像は参考表示であり、海図や航行安全情報の代わりにはなりません。</p></div>
+ <div class="card"><h2>計画位置と実測位置の誤差</h2><p class="note">青＝RAS計画位置、黄＝GPS実測位置。破線は計画位置と実測位置のずれを示します。距離・方位は実測位置から計画位置への修正方向です。</p><div id="raceErrorSummary" class="status">RAS計画を計算し、マークをGPS登録すると誤差を表示します。</div><div id="raceErrorTable"></div></div>
  <div class="card"><h2>計算されたマーク座標</h2><div id="racePoints" class="race-results"><p class="note">「コースを計算」を押すと座標を表示します。</p></div></div>
  <div class="race-warn">注意：これはRASの計算式を参考にした試作機能です。RASとの座標照合・実海面での検証が必要です。安全上重要な設置判断には、必ず公式情報・現場確認・複数人での照合を行ってください。</div>
 </section>
 
-<div class="footer">DOKKYO MARK ASSISTANT · BETA 3.6<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
+<div class="footer">DOKKYO MARK ASSISTANT · BETA 4.0<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
@@ -200,7 +208,7 @@ https://..."></textarea></div>
 // 1. 共通ユーティリティ・アプリ状態
 // ============================================================
 const $=id=>document.getElementById(id),rad=d=>d*Math.PI/180,deg=r=>r*180/Math.PI,norm=d=>(d%360+360)%360;
-let planned={},actual={},finishMidpointPlan=null,realMap=null,realMapLayers=[],liveWatchId=null,liveMarker=null,livePosition=null,anchorKey=null,courseGenerated=false,sagamiOverlay=null,hakkeiAreaLayer=null;
+let planned={},actual={},finishMidpointPlan=null,realMap=null,realMapLayers=[],liveWatchId=null,liveMarker=null,livePosition=null,anchorKey=null,courseGenerated=false,sagamiOverlay=null,hakkeiAreaLayer=null,navSelected="",raceNavSelected="";
 // マーク表示名
 const labels={1:"1番マーク（風上）",4:"4番マーク（風下）",3:"サイドマーク",S:"スタートピン",RC:"スタートライン本部船側",F1:"フィニッシュライン端A",F2:"フィニッシュライン端B",R:"レスキュー艇（ホバリング位置）","4S":"4Sマーク（スタートライン左端）","4P":"4Pマーク（スタートライン右端）"};
 // ============================================================
@@ -615,6 +623,21 @@ function updateHakkeiArea(){
  }
 }
 function bearingText(n){return `${String(Math.round(n)%360).padStart(3,"0")}°`}
+function navUpdate(prefix,items,position,map,selected,setSelected,resolve,inverseFn){
+ const select=$(prefix+'NavTarget'),readout=$(prefix+'NavReadout'),hint=$(prefix+'NavHint');
+ const keys=Object.keys(items||{}).filter(k=>k!=="R"&&k!=="finish"&&k!=="signal"&&k!=="outer");
+ if(!keys.length){select.innerHTML='<option value="">計画マークなし</option>';readout.textContent='コース計算待ち';hint.textContent='先にコースを計算してください。';return;}
+ if(!keys.includes(selected))setSelected(keys[0]);
+ select.innerHTML=keys.map(k=>`<option value="${k}" ${k===selected?'selected':''}>${k}：${(labels[k]||k)}</option>`).join('');
+ const target=resolve(selected);
+ if(!target){readout.textContent='誘導先座標を取得できません';return;}
+ if(!position){readout.textContent=`${selected} を選択中`;hint.textContent='リアルタイムGPSを開始すると距離・方位・到達目安を表示します。';return;}
+ const iv=inverseFn(position,target),distance=iv.dist??iv.distance,bearing=iv.bearing;
+ const accuracy=Number(position.accuracy)||0,near=distance<=Math.max(15,accuracy*1.5);
+ readout.innerHTML=`<div style="font-size:14px">${selected} まで</div><div style="font-size:30px;line-height:1.25">${distance.toFixed(0)} m</div><div>進行方位 <span style="font-size:25px">${String(Math.round(bearing)%360).padStart(3,'0')}°</span></div><div style="font-size:14px;margin-top:4px">${near?'到達範囲の目安内です':'誘導中'}</div>`;
+ hint.textContent=`GPS精度 ±${Math.round(accuracy)}m。到達目安は距離 ${Math.max(15,accuracy*1.5).toFixed(0)}m以内（自動到達判定・自動切替は行いません）。方位基準：${prefix==='raceNav'?'RAS式の磁気偏角補正を適用':'真北'}。`;
+ }
+function navFocus(prefix,map,selected,resolve){const target=resolve(selected);if(map&&target){map.setView([target.lat,target.lon],Math.max(map.getZoom(),17),{animate:true});}}
 function updateLiveReadings(){
  const o=origin();
  if(!courseGenerated){
@@ -635,6 +658,7 @@ function updateLiveReadings(){
  }).join("");
  $("liveReadings").innerHTML=`<strong>現在地から計画ポイントまで</strong><table><thead><tr><th>ポイント</th><th>距離</th><th>方位</th></tr></thead><tbody>${rows}</tbody></table><small>方位は真北000°基準・時計回り。GPS精度 ±${Math.round(livePosition.accuracy||0)}m</small>`;
 }
+function updateNav(){const o=origin(),items={};if(o&&courseGenerated)Object.keys(planned).forEach(k=>{if(k!=="R")items[k]=planned[k]});navUpdate("nav",items,livePosition,realMap,navSelected,v=>navSelected=v,k=>{if(!o||!planned[k])return null;return geo(o,planned[k])},(a,b)=>inverse(a,b));}
 function stopLiveGps(){
  if(liveWatchId!==null){navigator.geolocation.clearWatch(liveWatchId);liveWatchId=null;}
  $("liveGps").textContent="リアルタイム現在地を表示";$("liveStatus").textContent="現在地の追跡は停止中です。";
@@ -659,7 +683,7 @@ function startLiveGps(){
    }
   }
   $("liveStatus").textContent=`現在地を受信中：${livePosition.lat.toFixed(6)}, ${livePosition.lon.toFixed(6)} ／ 精度 ±${Math.round(livePosition.accuracy)}m`;
-  updateLiveReadings();
+  updateLiveReadings();updateNav();
  },err=>{
   $("liveStatus").textContent=({1:"位置情報の許可がありません。",2:"現在位置を取得できません。",3:"測位がタイムアウトしました。"}[err.code]||err.message);
   stopLiveGps();
@@ -727,7 +751,7 @@ function updateRealMap(){
 // ============================================================
 // 9. 画面更新・イベント登録・初期化
 // ============================================================
-function renderAll(){renderLists();draw();diagnostics();updateRealMap();updateLiveReadings();updateSimultaneousButton();$("mapStatus").textContent=origin()?`${anchorKey}マークを配置原点として使用中。`:`配置原点の${anchorTarget()}マークをGPS登録してください。模式図は相対配置です。`;save()}
+function renderAll(){renderLists();draw();diagnostics();updateRealMap();updateLiveReadings();updateNav();updateSimultaneousButton();$("mapStatus").textContent=origin()?`${anchorKey}マークを配置原点として使用中。`:`配置原点の${anchorTarget()}マークをGPS登録してください。模式図は相対配置です。`;save()}
 function removeActual(k){delete actual[k];renderAll()}
 function updatePracticeFields(){
  const c=$("course").value;
@@ -755,7 +779,7 @@ $("hakkeiAreaToggle").onchange=updateHakkeiArea;
 
 $("capture").onclick=()=>{let k=$("gpsMark").value;gps((f,e)=>{if(!f){$("gpsStatus").textContent=e;return}actual[k]=f;if(k===anchorTarget()){anchorKey=k;$("baseLat").value=f.lat.toFixed(6);$("baseLon").value=f.lon.toFixed(6);$("baseStatus").textContent=`${labels[k]||k}を配置原点として登録しました。`}$("gpsStatus").textContent=`${labels[k]||k}を登録。${f.lat.toFixed(6)}, ${f.lon.toFixed(6)} ／ 精度 ±${Math.round(f.accuracy)}m`;renderAll()})};
 $("clearGps").onclick=()=>{if(confirm("実測座標をすべて削除しますか？")){actual={};renderAll();$("gpsStatus").textContent="実測座標を削除しました。"}};
-document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll("main section").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab));renderAll();if(b.dataset.tab==="map"&&realMap)setTimeout(()=>realMap.invalidateSize(),120);if(b.dataset.tab==="race"&&raceMap)setTimeout(()=>raceMap.invalidateSize(),120)});
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll("main section").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab));renderAll();if(b.dataset.tab==="map"&&realMap)setTimeout(()=>realMap.invalidateSize(),120);if(b.dataset.tab==="race"&&raceMap)setTimeout(()=>{raceMap.invalidateSize();if(raceComputed&&!raceMap._raceHasPlanView&&!raceMap._raceUserMovedView){raceMap.fitBounds(raceLayer.getBounds().pad(0.12),{maxZoom:17});raceMap._raceHasPlanView=true;}},120)});
 ["wind","d14","startDist","finishDist","finishLine","baseLat","baseLon"].forEach(k=>$(k).addEventListener("change",()=>makePlan(false)));
 function initializeApp(){
  // 端末内の前回データを読み込む。
@@ -784,7 +808,11 @@ initializeApp();
 // ============================================================
 // 10. RAS互換レース運営モード（試作）
 // ============================================================
+$("navTarget").addEventListener("change",e=>{navSelected=e.target.value;updateNav();const o=origin();navFocus("nav",realMap,navSelected,k=>o&&planned[k]?geo(o,planned[k]):null);});
+$("navNext").addEventListener("click",()=>{const keys=Object.keys(planned).filter(k=>k!=="R");if(!keys.length)return;navSelected=keys[(keys.indexOf(navSelected)+1+keys.length)%keys.length];updateNav();const o=origin();navFocus("nav",realMap,navSelected,k=>o&&planned[k]?geo(o,planned[k]):null);});
+
 let raceMap=null, raceLayer=null, raceComputed=null, raceActual={}, raceActualConfigSignature=null, raceFinishLengthTouched=false;
+let raceLiveWatchId=null,raceLivePosition=null,raceLiveMarker=null,raceSagamiOverlay=null,raceHakkeiAreaLayer=null;
 try{const savedRaceGps=JSON.parse(localStorage.getItem('dmaRaceGpsV1')||'null');if(savedRaceGps){raceActual=savedRaceGps.actual||{};raceActualConfigSignature=savedRaceGps.signature||null;}}catch(e){}
 function raceSaveGps(){try{localStorage.setItem('dmaRaceGpsV1',JSON.stringify({actual:raceActual,signature:raceActualConfigSignature}));}catch(e){}}
 const RACE_E2=0.00669437999019758, RACE_RX=6378137.0;
@@ -795,7 +823,7 @@ function raceInverse(a,b,r){const dy=rad(b.lat-a.lat)*r.mm,dx=rad(b.lon-a.lon)*r
 function raceInput(){const n=id=>Number($(id).value);return {type:$('raceCourse').value,lat4:n('raceLat4'),lon4:n('raceLon4'),w:n('raceWind'),d:n('raceD'),a:n('raceA'),b:n('raceB'),r412:n('raceR412'),r123:n('raceR123'),f:n('raceF'),r23f:n('raceR23F'),finishLineLength:n('raceFinishLineLength'),gw:n('raceGW'),ws:n('raceWS'),useStartGeometry:$('raceUseStartGeometry').checked,signal:{lat:n('raceSignalLat'),lon:n('raceSignalLon')},s:n('raceStartLength'),d4:n('raceStartD4')}}
 function raceValidate(c){const finite=['lat4','lon4','w','d','f','r23f','finishLineLength','gw','ws','s','d4'];for(const k of finite)if(!Number.isFinite(c[k]))throw Error('入力値を数値で確認してください：'+k);if(c.lat4<-90||c.lat4>90||c.lon4<-180||c.lon4>180||c.signal.lat<-90||c.signal.lat>90||c.signal.lon<-180||c.signal.lon>180)throw Error('緯度・経度の範囲を確認してください。');if(c.d<=0||c.s<=0||c.finishLineLength<=0||c.gw<0||c.f<0||c.d4<0)throw Error('距離は0以上（1–4距離・スタートライン長は1以上）で入力してください。');if(c.type==='trapezoid'&&(!Number.isFinite(c.a)||!Number.isFinite(c.b)||!Number.isFinite(c.r412)||!Number.isFinite(c.r123)))throw Error('トラペゾイドの比率・角度を確認してください。');}
 function raceCalc(){
- const c=raceInput();raceValidate(c);const sig=JSON.stringify(c);if(raceActualConfigSignature&&raceActualConfigSignature!==sig)raceActual={};raceActualConfigSignature=sig;raceSaveGps();const courseBase={lat:c.lat4,lon:c.lon4},w=norm(c.w),ws=norm(c.ws);
+ const c=raceInput();raceValidate(c);const sig=JSON.stringify(c);raceActualConfigSignature=sig;raceSaveGps();const courseBase={lat:c.lat4,lon:c.lon4},w=norm(c.w),ws=norm(c.ws);
  // RAS etc() style start-side mark-4 calculation. Keep both candidate centers for diagnostics.
  const rs=raceRadii(c.signal.lat,c.signal.lon),aco=norm(ws-90),outer=raceStep(c.signal,c.s,aco,rs),center=raceStep(c.signal,c.s/2,aco,rs),start4=raceStep(center,c.d4,ws,rs);
  const start4S=raceStep(start4,c.gw/2,norm(ws-90),rs),start4P=raceStep(start4,c.gw/2,norm(ws+90),rs);
@@ -804,12 +832,15 @@ function raceCalc(){
  const centerDelta=raceInverse(courseBase,start4,raceRadii(courseBase.lat,courseBase.lon));
  const p={};p['4']=activeBase;
  p['1']=raceStep(activeBase,c.d,w,activeR);
+ // 4S・4Pはスタートラインを構成する実設置マークなので、
+ // トラペゾイドを含む全コース形式で必ず生成する。
+ p['4S']=raceStep(activeBase,c.gw/2,norm(ws-90),activeR);
+ p['4P']=raceStep(activeBase,c.gw/2,norm(ws+90),activeR);
  if(c.type==='trapezoid'){
   const a12=norm(w-(180-c.r412));p['2']=raceStep(p['1'],c.a*c.d,a12,activeR);const a23=norm(a12-180+c.r123);p['3']=raceStep(p['2'],c.b*c.d,a23,activeR);
   p['3S']=raceStep(p['3'],c.gw/2,norm(w-90),activeR);p['3P']=raceStep(p['3'],c.gw/2,norm(w+90),activeR);
   p['finish']=raceStep(p['3P'],c.f,norm(w+c.r23f),activeR);
  }else{
-  p['4S']=raceStep(activeBase,c.gw/2,norm(ws-90),activeR);p['4P']=raceStep(activeBase,c.gw/2,norm(ws+90),activeR);
   const finBearing=c.type==='lr'?norm(w+c.r23f):norm(w-c.r23f);const finishBaseMark=c.type==='lg'?p['4S']:p['4P'];p['finish']=raceStep(finishBaseMark,c.f,finBearing,activeR);
  }
  // Finish line: perpendicular to the vector from the final rounded mark to the RAS finish reference point.
@@ -830,6 +861,56 @@ function raceCoord(p){const la=Math.floor(p.lat),lo=Math.floor(p.lon);return `N$
 function raceMarkLabel(k){return ({'1':'マーク1','2':'マーク2','3':'マーク3','4':'マーク4','3S':'3S（ゲート左舷）','3P':'3P（ゲート右舷）','4S':'コース側4S','4P':'コース側4P','finish':'フィニッシュ基準点','finishBoat':'フィニッシュ船（風上側）','finishPin':'フィニッシュピン（風下側）','signal':'シグナルボート','outer':'スタートライン外端','start4':'スタート側4マーク','startLineS':'スタートライン側マーク（左端）','startLineP':'スタートライン側マーク（右端）'}[k]||k)}
 function raceRegisterGps(k){gps((f,e)=>{if(!f){$('raceStatus').textContent=e;return}raceActual[k]=f;raceSaveGps();raceRender();$('raceStatus').textContent=`${raceMarkLabel(k)}をGPS登録しました。精度 ±${Math.round(f.accuracy)}m`;});}
 function raceRemoveGps(k){delete raceActual[k];raceSaveGps();raceRender();}
+function updateRaceSagamiOverlay(){
+ if(!raceMap)return;
+ const enabled=$('raceSagamiOverlayToggle').checked;
+ if(enabled&&!raceSagamiOverlay){
+  raceSagamiOverlay=L.imageOverlay(SAGAMI_RACE_MAP_IMAGE,[[35.2583333,139.475],[35.3000000,139.575]],{opacity:0.72,interactive:false}).addTo(raceMap);
+ }else if(!enabled&&raceSagamiOverlay){raceMap.removeLayer(raceSagamiOverlay);raceSagamiOverlay=null;}
+ updateRaceHakkeiArea();
+}
+function updateRaceHakkeiArea(){
+ if(!raceMap)return;
+ const enabled=$('raceHakkeiAreaToggle').checked;
+ if(enabled&&!raceHakkeiAreaLayer){
+  const area=[[35.36309,139.66657],[35.36174377931756,139.6807313337922],[35.34947082422643,139.68008156865835],[35.34246437101698,139.66417036950588],[35.35694,139.66425],[35.35863,139.66665]];
+  raceHakkeiAreaLayer=L.polygon(area,{color:"#6426e8",weight:4,opacity:0.95,fillColor:"#6426e8",fillOpacity:0.13,interactive:false}).addTo(raceMap);
+ }else if(!enabled&&raceHakkeiAreaLayer){raceMap.removeLayer(raceHakkeiAreaLayer);raceHakkeiAreaLayer=null;}
+}
+function updateRaceLiveReadings(){
+ const el=$('raceLiveReadings');
+ if(!raceLivePosition){el.textContent='現在地を取得すると、計画マークまでの距離・方位を表示します。';return;}
+ if(!raceComputed){el.textContent='先にRAS計画を計算してください。';return;}
+ const rows=Object.entries(raceComputed.points).filter(([k])=>k!=='finish').map(([k,p])=>{
+  const iv=raceInverse(raceLivePosition,p,raceRadii(raceLivePosition.lat,raceLivePosition.lon));
+  return `<tr><td>${raceMarkLabel(k)}</td><td><strong>${iv.distance.toFixed(0)}m</strong></td><td><strong>${String(Math.round(iv.bearing)%360).padStart(3,'0')}°</strong></td></tr>`;
+ }).join('');
+ el.innerHTML=`<strong>現在地から計画マークまで</strong><table><thead><tr><th>計画マーク</th><th>距離</th><th>方位角</th></tr></thead><tbody>${rows}</tbody></table><small>方位は真北000°基準・時計回り。GPS精度 ±${Math.round(raceLivePosition.accuracy||0)}m</small>`;
+}
+function stopRaceLiveGps(){
+ if(raceLiveWatchId!==null){navigator.geolocation.clearWatch(raceLiveWatchId);raceLiveWatchId=null;}
+ $('raceLiveGps').textContent='リアルタイム現在地を表示';$('raceLiveStatus').textContent='現在地の追跡は停止中です。';
+}
+function startRaceLiveGps(){
+ if(!navigator.geolocation){$('raceLiveStatus').textContent='このブラウザはGPSに対応していません。';return;}
+ if(raceLiveWatchId!==null){stopRaceLiveGps();return;}
+ $('raceLiveGps').textContent='現在地の追跡を停止';$('raceLiveStatus').textContent='GPS測位中…';
+ raceLiveWatchId=navigator.geolocation.watchPosition(pos=>{
+  raceLivePosition={lat:pos.coords.latitude,lon:pos.coords.longitude,accuracy:pos.coords.accuracy,time:pos.timestamp};
+  if(raceMap){
+   const ll=[raceLivePosition.lat,raceLivePosition.lon];
+   if(!raceLiveMarker)raceLiveMarker=L.marker(ll,{icon:liveIcon(),zIndexOffset:1200}).addTo(raceMap).bindTooltip('レスキュー艇の現在地');
+   else raceLiveMarker.setLatLng(ll);
+   if(!raceMap._raceLiveCentered&&!raceMap._raceUserMovedView){raceMap.setView(ll,17,{animate:true});raceMap._raceLiveCentered=true;}
+   else if(!raceMap._raceUserMovedView&&raceMap.getZoom()>=15)raceMap.panTo(ll,{animate:true});
+  }
+  $('raceLiveStatus').textContent=`現在地を受信中：${raceLivePosition.lat.toFixed(6)}, ${raceLivePosition.lon.toFixed(6)} ／ 精度 ±${Math.round(raceLivePosition.accuracy)}m`;
+  updateRaceLiveReadings();updateRaceNav();
+ },err=>{$('raceLiveStatus').textContent=({1:'位置情報の許可がありません。',2:'現在位置を取得できません。',3:'測位がタイムアウトしました。'}[err.code]||err.message);stopRaceLiveGps();},{enableHighAccuracy:true,maximumAge:1000,timeout:20000});
+}
+function updateRaceNav(){const pts=raceComputed?.points||{};navUpdate("raceNav",pts,raceLivePosition,raceMap,raceNavSelected,v=>raceNavSelected=v,k=>pts[k]||null,(a,b)=>raceInverse(a,b,raceRadii(a.lat,a.lon)));}
+$("raceNavTarget").addEventListener("change",e=>{raceNavSelected=e.target.value;updateRaceNav();navFocus("raceNav",raceMap,raceNavSelected,k=>raceComputed?.points?.[k]||null);});
+$("raceNavNext").addEventListener("click",()=>{const keys=Object.keys(raceComputed?.points||{}).filter(k=>!['finish','signal','outer'].includes(k));if(!keys.length)return;raceNavSelected=keys[(keys.indexOf(raceNavSelected)+1+keys.length)%keys.length];updateRaceNav();navFocus("raceNav",raceMap,raceNavSelected,k=>raceComputed?.points?.[k]||null);});
 function raceRender(){
  const data=raceComputed;if(!data)return;
  const entries=Object.entries(data.points).filter(([k])=>k!=='finish');
@@ -838,14 +919,39 @@ function raceRender(){
  const gateP=raceInverse(dg.course4P,dg.start4P,raceRadii(dg.course4P.lat,dg.course4P.lon)).distance;
  $('raceConsistency').innerHTML=`<strong>4マーク整合性診断</strong><br>中心位置の差：${dg.centerDelta.distance.toFixed(1)}m（方位 ${dg.centerDelta.bearing.toFixed(1)}°）<br>4Sの差：${gateS.toFixed(1)}m ／ 4Pの差：${gateP.toFixed(1)}m<br>現在の採用基準：${data.config.useStartGeometry?'スタート設定から算出した4マーク':'コースURLの4マーク座標'}。${Math.max(dg.centerDelta.distance,gateS,gateP)>5?'座標差があります。入力値・風軸・距離を確認してください。':'両者は概ね一致しています。'}`;
  $('racePoints').innerHTML=entries.map(([k,p])=>{const a=raceActual[k];const delta=a?raceInverse(p,a,raceRadii(p.lat,p.lon)).distance:null;return `<div class="race-point"><strong>${raceMarkLabel(k)}</strong><small>${raceCoord(p)}<br>${p.lat.toFixed(7)}, ${p.lon.toFixed(7)}${a?`<br>実測：${a.lat.toFixed(7)}, ${a.lon.toFixed(7)}<br>計画との差：約${delta.toFixed(1)}m ／ GPS精度 ±${Math.round(a.accuracy||0)}m`:'<br>GPS未登録'}</small><div class="race-point-actions"><button class="secondary" data-race-gps="${k}">現在位置を登録</button>${a?`<button class="danger" data-race-remove="${k}">登録解除</button>`:''}</div></div>`}).join('');
- if(!raceMap){raceMap=L.map('raceMap');L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(raceMap);raceLayer=L.layerGroup().addTo(raceMap)}raceLayer.clearLayers();
- const coords={};for(const [k,v] of entries){const ll=[v.lat,v.lon];coords[k]=ll;L.circleMarker(ll,{radius:7,color:'#fff',weight:2,fillColor:k==='finishBoat'?'#16845b':k==='finishPin'?'#c34c45':k==='signal'?'#7046b8':'#1676a5',fillOpacity:1}).bindPopup(`<b>${raceMarkLabel(k)}</b><br>${raceCoord(v)}<br>${v.lat.toFixed(7)}, ${v.lon.toFixed(7)}`).addTo(raceLayer)}
+ const measuredRows=entries.filter(([k])=>raceActual[k]).map(([k,p])=>{
+  const a=raceActual[k],r=raceInverse(a,p,raceRadii(a.lat,a.lon)),acc=Number.isFinite(a.accuracy)?a.accuracy:null;
+  const state=acc===null?'精度不明':r.distance<=acc?'端末の推定精度内':'推定精度を超える差';
+  return `<tr><td>${raceMarkLabel(k)}</td><td class="race-delta">${r.distance.toFixed(1)}m</td><td>${r.bearing.toFixed(1)}°</td><td>${acc===null?'—':`±${Math.round(acc)}m`}</td><td>${state}</td></tr>`;
+ });
+ $('raceErrorSummary').textContent=measuredRows.length?`実測 ${measuredRows.length}地点を比較中。距離・方位は実測位置から計画位置への方向。端末のGPS精度は推定値であり、保証された誤差範囲ではありません。`:'GPS実測マークはまだありません。マークを登録すると計画位置との差を表示します。';
+ $('raceErrorTable').innerHTML=measuredRows.length?`<table class="race-error-table"><thead><tr><th>マーク</th><th>位置差</th><th>修正方位</th><th>GPS精度</th><th>目安</th></tr></thead><tbody>${measuredRows.join('')}</tbody></table>`:'<p class="note">比較できる実測マークがありません。</p>';
+ if(!raceMap){raceMap=L.map('raceMap').setView([35.34503,139.66472],15);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(raceMap);raceLayer=L.layerGroup().addTo(raceMap);raceMap._raceUserMovedView=false;raceMap._raceHasPlanView=false;raceMap.on('dragstart zoomstart',()=>{if(!raceMap._raceProgrammaticView)raceMap._raceUserMovedView=true;});}
+ updateRaceSagamiOverlay();raceLayer.clearLayers();
+ const coords={};for(const [k,v] of entries){const ll=[v.lat,v.lon];coords[k]=ll;L.circleMarker(ll,{radius:7,color:'#fff',weight:2,fillColor:k==='finishBoat'?'#16845b':k==='finishPin'?'#c34c45':k==='signal'?'#7046b8':'#1676a5',fillOpacity:1}).bindPopup(`<b>${raceMarkLabel(k)}・計画</b><br>${raceCoord(v)}<br>${v.lat.toFixed(7)}, ${v.lon.toFixed(7)}`).addTo(raceLayer)}
  // 計画線はスタートラインとフィニッシュラインのみ表示。コース辺・ゲート線は描画しない。
  const line=(a,b,color)=>{if(coords[a]&&coords[b])L.polyline([coords[a],coords[b]],{color,weight:3,opacity:.9}).addTo(raceLayer)};
  line('signal','outer','#d97706');
  line('finishBoat','finishPin','#16845b');
- for(const [k,v] of Object.entries(raceActual)){if(!coords[k])continue;L.circleMarker([v.lat,v.lon],{radius:8,color:'#fff',weight:2,fillColor:'#e2a400',fillOpacity:1}).bindPopup(`<b>${raceMarkLabel(k)}・実測</b><br>${v.lat.toFixed(7)}, ${v.lon.toFixed(7)}<br>精度 ±${Math.round(v.accuracy||0)}m`).addTo(raceLayer)}
- const all=entries.map(([,v])=>[v.lat,v.lon]);for(const [k,v] of Object.entries(raceActual))if(coords[k])all.push([v.lat,v.lon]);raceMap.fitBounds(all,{padding:[25,25]});setTimeout(()=>raceMap.invalidateSize(),80);
+ const all=entries.map(([,v])=>[v.lat,v.lon]);
+ for(const [k,v] of Object.entries(raceActual)){
+  if(!coords[k])continue;
+  const planned=coords[k],measured=[v.lat,v.lon];
+  L.polyline([planned,measured],{color:'#c34c45',weight:2,dashArray:'5 6',opacity:.9}).addTo(raceLayer);
+  L.circleMarker(measured,{radius:8,color:'#fff',weight:2,fillColor:'#e2a400',fillOpacity:1}).bindPopup(`<b>${raceMarkLabel(k)}・実測</b><br>${v.lat.toFixed(7)}, ${v.lon.toFixed(7)}<br>精度 ±${Math.round(v.accuracy||0)}m`).addTo(raceLayer);
+  all.push(measured);
+ }
+ if(raceLivePosition){
+  const ll=[raceLivePosition.lat,raceLivePosition.lon];
+  if(!raceLiveMarker)raceLiveMarker=L.marker(ll,{icon:liveIcon(),zIndexOffset:1200}).addTo(raceMap).bindTooltip('レスキュー艇の現在地');
+  else raceLiveMarker.setLatLng(ll);
+  all.push(ll);
+ }
+ if(all.length&&!raceMap._raceHasPlanView&&!raceMap._raceUserMovedView){
+  raceMap._raceProgrammaticView=true;raceMap.fitBounds(L.latLngBounds(all).pad(0.12),{maxZoom:17});raceMap._raceHasPlanView=true;
+  setTimeout(()=>{if(raceMap)raceMap._raceProgrammaticView=false;},250);
+ }
+ updateRaceLiveReadings();updateRaceNav();setTimeout(()=>raceMap.invalidateSize(),80);
  $('raceStatus').textContent=`計画マーク ${entries.length}地点／GPS登録 ${Object.keys(raceActual).filter(k=>coords[k]).length}地点。フィニッシュライン ${data.config.finishLineLength.toFixed(1)}m（風上側：フィニッシュ船／風下側：フィニッシュピン）。`; 
 }
 $('racePoints').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.raceGps)raceRegisterGps(b.dataset.raceGps);if(b.dataset.raceRemove)raceRemoveGps(b.dataset.raceRemove)});
@@ -855,6 +961,9 @@ $('raceCourse').addEventListener('change',()=>{$('raceTrapFields').hidden=$('rac
 $('raceFinishLineLength').addEventListener('input',()=>{raceFinishLengthTouched=true;});
 $('raceStartLength').addEventListener('input',()=>{if(!raceFinishLengthTouched){const n=Number($('raceStartLength').value);if(Number.isFinite(n)&&n>0)$('raceFinishLineLength').value=(n/5).toFixed(1);}});
 $('raceCalculate').addEventListener('click',raceCalculate);
+$('raceLiveGps').addEventListener('click',startRaceLiveGps);
+$('raceSagamiOverlayToggle').addEventListener('change',updateRaceSagamiOverlay);
+$('raceHakkeiAreaToggle').addEventListener('change',updateRaceHakkeiArea);
 $('raceUseStart4').addEventListener('click',()=>{try{const x=raceCalc().diagnostics.start4;$('raceLat4').value=x.lat.toFixed(7);$('raceLon4').value=x.lon.toFixed(7);$('raceUseStartGeometry').checked=false;raceCalculate();$('raceStatus').textContent='スタート設定から算出した4マーク座標をコースURL側の基準座標へ反映しました。';}catch(e){$('raceStatus').textContent='反映できません：'+e.message;}});
 // When the start-side geometry inputs change, recalculate immediately. With the default checkbox on,
 // the active course-side 4S/4P follow the newly calculated start-side 4-mark position.
