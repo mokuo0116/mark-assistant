@@ -31,6 +31,9 @@ section .card>p.note{margin:0 0 12px}
 button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #79bde0;outline-offset:2px}
 .footer{text-align:center;color:#82919a;font-size:10px;padding:15px}
 @media(min-width:600px){main{padding:22px}}
+
+.race-point-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.race-point-actions button{font-size:12px;padding:6px 9px}
 </style>
 <style>
 #realMap{height:420px;width:100%;border:1px solid var(--line);border-radius:10px;z-index:1}
@@ -148,7 +151,7 @@ https://..."></textarea></div>
  </div>
  <div class="card">
   <h2>レース運営モード</h2>
-  <p class="note">RASのレースオフィサー画面・マーク設定関数を参考に、コース座標と運営艇向け共有情報を作成します。通常の練習コース設定とは独立しています。</p>
+  <p class="note">RASの共有設定をもとに計画マークを地図へ展開し、各マークの実測位置をGPS登録します。通常の練習コース設定とは独立しています。</p>
   <div class="field"><label>コース形式</label><select id="raceCourse"><option value="trapezoid">トラペゾイド</option><option value="lr">LR</option><option value="lg">LG</option></select></div>
   <h2 style="margin-top:14px">コース設定（マーク4基準）</h2>
   <div class="race-grid">
@@ -183,11 +186,10 @@ https://..."></textarea></div>
  </div>
  <div class="card"><h2>レース海面図</h2><div id="raceMap" class="race-map"></div><p class="note">マークをタップすると座標を確認できます。地図表示には通信が必要です。</p></div>
  <div class="card"><h2>計算されたマーク座標</h2><div id="racePoints" class="race-results"><p class="note">「コースを計算」を押すと座標を表示します。</p></div></div>
- <div class="card"><h2>運営艇への共有</h2><p class="note">役割ごとに必要な情報だけを表示する共有リンクを作成します。リンクはこのHTMLアプリを開ける環境で使用してください。</p><div class="race-links"><button class="secondary" id="raceShareStart">スタート・4マーク運営艇用リンクをコピー</button><button class="secondary" id="raceShareCourse">1・2・3・フィニッシュ運営艇用リンクをコピー</button><button class="secondary" id="raceShareAll">レースオフィサー用リンクをコピー</button></div><div class="status" id="raceShareStatus">共有リンクはURL内に設定データを含みます。</div></div>
- <div class="race-warn">注意：これはRASの計算式を移植した試作機能です。現時点ではRASとの座標照合・実海面での検証が完了していません。安全上重要な設置判断には、必ず公式情報・現場確認・複数人での照合を行ってください。</div>
+ <div class="race-warn">注意：これはRASの計算式を参考にした試作機能です。RASとの座標照合・実海面での検証が必要です。安全上重要な設置判断には、必ず公式情報・現場確認・複数人での照合を行ってください。</div>
 </section>
 
-<div class="footer">DOKKYO MARK ASSISTANT · BETA 3.1<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
+<div class="footer">DOKKYO MARK ASSISTANT · BETA 3.2<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
@@ -779,7 +781,9 @@ initializeApp();
 // ============================================================
 // 10. RAS互換レース運営モード（試作）
 // ============================================================
-let raceMap=null, raceLayer=null, raceComputed=null, raceCurrentView="all";
+let raceMap=null, raceLayer=null, raceComputed=null, raceActual={}, raceActualConfigSignature=null;
+try{const savedRaceGps=JSON.parse(localStorage.getItem('dmaRaceGpsV1')||'null');if(savedRaceGps){raceActual=savedRaceGps.actual||{};raceActualConfigSignature=savedRaceGps.signature||null;}}catch(e){}
+function raceSaveGps(){try{localStorage.setItem('dmaRaceGpsV1',JSON.stringify({actual:raceActual,signature:raceActualConfigSignature}));}catch(e){}}
 const RACE_E2=0.00669437999019758, RACE_RX=6378137.0;
 function raceMagDecl(lat,lon){return 8.2637+0.3077*(lat-37)-0.1288*(lon-138)-0.01092*(lon-138)*(lon-138)}
 function raceRadii(lat,lon){const ww=Math.sqrt(1-RACE_E2*Math.sin(rad(lat))**2);return {mm:RACE_RX*(1-RACE_E2)/Math.pow(ww,3),nn:RACE_RX/ww,ni:Math.cos(rad(lat))*RACE_RX/ww,dd:raceMagDecl(lat,lon)}}
@@ -788,12 +792,11 @@ function raceInverse(a,b,r){const dy=rad(b.lat-a.lat)*r.mm,dx=rad(b.lon-a.lon)*r
 function raceInput(){const n=id=>Number($(id).value);return {type:$('raceCourse').value,lat4:n('raceLat4'),lon4:n('raceLon4'),w:n('raceWind'),d:n('raceD'),a:n('raceA'),b:n('raceB'),r412:n('raceR412'),r123:n('raceR123'),f:n('raceF'),r23f:n('raceR23F'),gw:n('raceGW'),ws:n('raceWS'),signal:{lat:n('raceSignalLat'),lon:n('raceSignalLon')},s:n('raceStartLength'),d4:n('raceStartD4')}}
 function raceValidate(c){const finite=['lat4','lon4','w','d','f','r23f','gw','ws','s','d4'];for(const k of finite)if(!Number.isFinite(c[k]))throw Error('入力値を数値で確認してください：'+k);if(c.lat4<-90||c.lat4>90||c.lon4<-180||c.lon4>180||c.signal.lat<-90||c.signal.lat>90||c.signal.lon<-180||c.signal.lon>180)throw Error('緯度・経度の範囲を確認してください。');if(c.d<=0||c.s<=0||c.gw<0||c.f<0||c.d4<0)throw Error('距離は0以上（1–4距離・スタートライン長は1以上）で入力してください。');if(c.type==='trapezoid'&&(!Number.isFinite(c.a)||!Number.isFinite(c.b)||!Number.isFinite(c.r412)||!Number.isFinite(c.r123)))throw Error('トラペゾイドの比率・角度を確認してください。');}
 function raceCalc(){
- const c=raceInput();raceValidate(c);const p={},base={lat:c.lat4,lon:c.lon4},r=raceRadii(c.lat4,c.lon4),w=norm(c.w),ws=norm(c.ws);p['4']=base;
+ const c=raceInput();raceValidate(c);const sig=JSON.stringify(c);if(raceActualConfigSignature&&raceActualConfigSignature!==sig)raceActual={};raceActualConfigSignature=sig;raceSaveGps();const p={},base={lat:c.lat4,lon:c.lon4},r=raceRadii(c.lat4,c.lon4),w=norm(c.w),ws=norm(c.ws);p['4']=base;
  p['1']=raceStep(base,c.d,w,r);
  if(c.type==='trapezoid'){
   const a12=norm(w-(180-c.r412));p['2']=raceStep(p['1'],c.a*c.d,a12,r);const a23=norm(a12-180+c.r123);p['3']=raceStep(p['2'],c.b*c.d,a23,r);
   p['3S']=raceStep(p['3'],c.gw/2,norm(w-90),r);p['3P']=raceStep(p['3'],c.gw/2,norm(w+90),r);
-  p["3S′"]=raceStep(p['3S'],100,norm(w+180),r);p["3P′"]=raceStep(p['3P'],100,norm(w+180),r);
   p['finish']=raceStep(p['3P'],c.f,norm(w+c.r23f),r);
  }else{
   p['4S']=raceStep(base,c.gw/2,norm(ws-90),r);p['4P']=raceStep(base,c.gw/2,norm(ws+90),r);
@@ -807,22 +810,28 @@ function raceCalc(){
  raceComputed={config:c,points:p};return raceComputed;
 }
 function raceCoord(p){const la=Math.floor(p.lat),lo=Math.floor(p.lon);return `N${la}°${((p.lat-la)*60).toFixed(4)}′ E${lo}°${((p.lon-lo)*60).toFixed(4)}′`;}
-function raceRender(){const data=raceComputed;if(!data)return;let entries=Object.entries(data.points);if(raceCurrentView==='start')entries=entries.filter(([k])=>['signal','outer','start4','start4S','start4P'].includes(k));if(raceCurrentView==='course')entries=entries.filter(([k])=>!['signal','outer','start4','start4S','start4P'].includes(k));$('racePoints').innerHTML=entries.map(([k,p])=>`<div class="race-point"><strong>${k==='finish'?'フィニッシュ':k==='signal'?'シグナル艇':k==='outer'?'スタート・アウター':k==='start4'?'スタート側4マーク':k.replace('start4','スタート側4')} </strong><small>${raceCoord(p)}<br>${p.lat.toFixed(7)}, ${p.lon.toFixed(7)}</small></div>`).join('');
+function raceMarkLabel(k){return ({'1':'マーク1','2':'マーク2','3':'マーク3','4':'マーク4','3S':'3S（ゲート左舷）','3P':'3P（ゲート右舷）','4S':'4S（ゲート左舷）','4P':'4P（ゲート右舷）','finish':'フィニッシュ','signal':'シグナルボート','outer':'スタートライン外端','start4':'スタート側4マーク','start4S':'スタート側4S','start4P':'スタート側4P'}[k]||k)}
+function raceRegisterGps(k){gps((f,e)=>{if(!f){$('raceStatus').textContent=e;return}raceActual[k]=f;raceSaveGps();raceRender();$('raceStatus').textContent=`${raceMarkLabel(k)}をGPS登録しました。精度 ±${Math.round(f.accuracy)}m`;});}
+function raceRemoveGps(k){delete raceActual[k];raceSaveGps();raceRender();}
+function raceRender(){
+ const data=raceComputed;if(!data)return;
+ const entries=Object.entries(data.points);
+ $('racePoints').innerHTML=entries.map(([k,p])=>{const a=raceActual[k];const delta=a?raceInverse(p,a,raceRadii(p.lat,p.lon)).distance:null;return `<div class="race-point"><strong>${raceMarkLabel(k)}</strong><small>${raceCoord(p)}<br>${p.lat.toFixed(7)}, ${p.lon.toFixed(7)}${a?`<br>実測：${a.lat.toFixed(7)}, ${a.lon.toFixed(7)}<br>計画との差：約${delta.toFixed(1)}m ／ GPS精度 ±${Math.round(a.accuracy||0)}m`:'<br>GPS未登録'}</small><div class="race-point-actions"><button class="secondary" data-race-gps="${k}">現在位置を登録</button>${a?`<button class="danger" data-race-remove="${k}">登録解除</button>`:''}</div></div>`}).join('');
  if(!raceMap){raceMap=L.map('raceMap');L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(raceMap);raceLayer=L.layerGroup().addTo(raceMap)}raceLayer.clearLayers();
- const colors={signal:'#7046b8',outer:'#d97706',start4:'#d97706',start4S:'#d97706',start4P:'#d97706',finish:'#16845b'};const coords={};for(const [k,v] of entries){const ll=[v.lat,v.lon];coords[k]=ll;L.circleMarker(ll,{radius:7,color:'#fff',weight:2,fillColor:colors[k]||'#1676a5',fillOpacity:1}).bindPopup(`<b>${k}</b><br>${raceCoord(v)}<br>${v.lat.toFixed(7)}, ${v.lon.toFixed(7)}`).addTo(raceLayer)}
- const line=(a,b,color)=>{if(coords[a]&&coords[b])L.polyline([coords[a],coords[b]],{color,weight:3,opacity:.85}).addTo(raceLayer)};
- line('signal','outer','#d97706');line('signal','start4','#d97706');line('4','1','#1676a5');if(data.config.type==='trapezoid'){line('1','2','#1676a5');line('2','3','#1676a5');line('3','finish','#16845b')}else line('4P','finish','#16845b');
- if(coords['3S']&&coords['3P'])line('3S','3P','#1676a5');if(coords['4S']&&coords['4P'])line('4S','4P','#d97706');if(coords['start4S']&&coords['start4P'])line('start4S','start4P','#d97706');
- const all=entries.map(([,v])=>[v.lat,v.lon]);raceMap.fitBounds(all,{padding:[25,25]});setTimeout(()=>raceMap.invalidateSize(),80);
- $('raceStatus').textContent=`計算完了：${entries.length}地点。コース形式 ${data.config.type.toUpperCase()}／風軸 ${data.config.w}°／スタート風軸 ${data.config.ws}°。`;
+ const coords={};for(const [k,v] of entries){const ll=[v.lat,v.lon];coords[k]=ll;L.circleMarker(ll,{radius:7,color:'#fff',weight:2,fillColor:k==='finish'?'#16845b':k==='signal'?'#7046b8':'#1676a5',fillOpacity:1}).bindPopup(`<b>${raceMarkLabel(k)}</b><br>${raceCoord(v)}<br>${v.lat.toFixed(7)}, ${v.lon.toFixed(7)}`).addTo(raceLayer)}
+ // 計画線はスタートラインとフィニッシュラインのみ表示。コース辺・ゲート線は描画しない。
+ const line=(a,b,color)=>{if(coords[a]&&coords[b])L.polyline([coords[a],coords[b]],{color,weight:3,opacity:.9}).addTo(raceLayer)};
+ line('signal','outer','#d97706');
+ if(data.config.type==='trapezoid')line('3P','finish','#16845b');else line('4P','finish','#16845b');
+ for(const [k,v] of Object.entries(raceActual)){if(!coords[k])continue;L.circleMarker([v.lat,v.lon],{radius:8,color:'#fff',weight:2,fillColor:'#e2a400',fillOpacity:1}).bindPopup(`<b>${raceMarkLabel(k)}・実測</b><br>${v.lat.toFixed(7)}, ${v.lon.toFixed(7)}<br>精度 ±${Math.round(v.accuracy||0)}m`).addTo(raceLayer)}
+ const all=entries.map(([,v])=>[v.lat,v.lon]);for(const [k,v] of Object.entries(raceActual))if(coords[k])all.push([v.lat,v.lon]);raceMap.fitBounds(all,{padding:[25,25]});setTimeout(()=>raceMap.invalidateSize(),80);
+ $('raceStatus').textContent=`計画マーク ${entries.length}地点／GPS登録 ${Object.keys(raceActual).filter(k=>coords[k]).length}地点。コース形式 ${data.config.type.toUpperCase()}。`;
 }
+$('racePoints').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.raceGps)raceRegisterGps(b.dataset.raceGps);if(b.dataset.raceRemove)raceRemoveGps(b.dataset.raceRemove)});
+
 function raceCalculate(){try{raceCalc();raceRender();}catch(e){$('raceStatus').textContent='計算できません：'+e.message;}}
-function raceShare(view){if(!raceComputed)raceCalc();const payload={v:1,view,data:raceComputed};const bytes=new TextEncoder().encode(JSON.stringify(payload));let bin='';bytes.forEach(b=>bin+=String.fromCharCode(b));const encoded=btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');const url=location.href.split('#')[0]+'#race='+encoded; navigator.clipboard?.writeText(url).then(()=>$('raceShareStatus').textContent='共有リンクをコピーしました。').catch(()=>$('raceShareStatus').textContent=url);if(!navigator.clipboard)$('raceShareStatus').textContent=url;}
 $('raceCourse').addEventListener('change',()=>{$('raceTrapFields').hidden=$('raceCourse').value!=='trapezoid'});
 $('raceCalculate').addEventListener('click',raceCalculate);
-$('raceShareStart').addEventListener('click',()=>raceShare('start'));
-$('raceShareCourse').addEventListener('click',()=>raceShare('course'));
-$('raceShareAll').addEventListener('click',()=>raceShare('all'));
 $('raceUseStart4').addEventListener('click',()=>{try{const x=raceCalc().points.start4;$('raceLat4').value=x.lat.toFixed(7);$('raceLon4').value=x.lon.toFixed(7);$('raceStatus').textContent='スタート設定から算出した4マーク座標をコース基準に反映しました。続けてコースを計算してください。';}catch(e){$('raceStatus').textContent='反映できません：'+e.message;}});
 // RAS運営LINEメッセージの一括読み込み。説明文・見出し・余分な改行は無視する。
 function rasParseDmm(text){
@@ -857,8 +866,6 @@ function rasImportMessage(){
  }catch(e){$('rasImportStatus').textContent='読み込みできません：'+e.message;}
 }
 $('rasImport').addEventListener('click',rasImportMessage);
-// Load a role-specific race link without disturbing the normal training-mode data.
-try{const m=location.hash.match(/(?:^#|&)race=([^&]+)/);if(m){const b64=m[1].replace(/-/g,'+').replace(/_/g,'/')+'==='.slice((m[1].length+3)%4);const bin=atob(b64),bytes=Uint8Array.from(bin,ch=>ch.charCodeAt(0));const payload=JSON.parse(new TextDecoder().decode(bytes));if(payload&&payload.v===1&&payload.data&&payload.data.config){const c=payload.data.config;const set=(id,v)=>{if($(id))$(id).value=v;};set('raceCourse',c.type);set('raceLat4',c.lat4);set('raceLon4',c.lon4);set('raceWind',c.w);set('raceD',c.d);set('raceA',c.a);set('raceB',c.b);set('raceR412',c.r412);set('raceR123',c.r123);set('raceF',c.f);set('raceR23F',c.r23f);set('raceGW',c.gw);set('raceWS',c.ws);set('raceSignalLat',c.signal.lat);set('raceSignalLon',c.signal.lon);set('raceStartLength',c.s);set('raceStartD4',c.d4);$('raceTrapFields').hidden=c.type!=='trapezoid';raceComputed=payload.data;raceCurrentView=payload.view||'all';document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab==='race'));document.querySelectorAll('main section').forEach(x=>x.classList.toggle('active',x.id==='race'));raceRender();$('raceShareStatus').textContent=(raceCurrentView==='start'?'スタート・4マーク運営艇向け':raceCurrentView==='course'?'1・2・3・フィニッシュ運営艇向け':'レースオフィサー向け')+'の共有データを読み込みました。';}}}catch(e){$('raceShareStatus').textContent='共有データを読み込めませんでした：'+e.message;}
 
 </script>
 </body></html>
