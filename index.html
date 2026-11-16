@@ -200,7 +200,7 @@ https://..."></textarea></div>
  <div class="race-warn">注意：これはRASの計算式を参考にした試作機能です。RASとの座標照合・実海面での検証が必要です。安全上重要な設置判断には、必ず公式情報・現場確認・複数人での照合を行ってください。</div>
 </section>
 
-<div class="footer">DOKKYO MARK ASSISTANT · BETA 4.3<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
+<div class="footer">DOKKYO MARK ASSISTANT · BETA 4.4<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
@@ -643,7 +643,7 @@ function navUpdate(prefix,items,position,map,selected,setSelected,resolve,invers
  const iv=inverseFn(position,target),distance=iv.dist??iv.distance,bearing=iv.bearing;
  const accuracy=Number(position.accuracy)||0,near=distance<=Math.max(15,accuracy*1.5);
  readout.innerHTML=`<div style="font-size:14px">${selected} まで</div><div style="font-size:30px;line-height:1.25">${distance.toFixed(0)} m</div><div>進行方位 <span style="font-size:25px">${String(Math.round(bearing)%360).padStart(3,'0')}°</span></div><div style="font-size:14px;margin-top:4px">${near?'到達範囲の目安内です':'誘導中'}</div>`;
- hint.textContent=`GPS精度 ±${Math.round(accuracy)}m。到達目安は距離 ${Math.max(15,accuracy*1.5).toFixed(0)}m以内（自動到達判定・自動切替は行いません）。方位基準：${prefix==='raceNav'?'RAS式の磁気偏角補正を適用':'真北'}。`;
+ hint.textContent=`GPS精度 ±${Math.round(accuracy)}m。到達目安は距離 ${Math.max(15,accuracy*1.5).toFixed(0)}m以内（自動到達判定・自動切替は行いません）。方位基準：${prefix==='race'?'RAS式の磁気偏角補正を適用':'真北'}。`;
  }
 function navFocus(prefix,map,selected,resolve){const target=resolve(selected);if(map&&target){map.setView([target.lat,target.lon],Math.max(map.getZoom(),17),{animate:true});}}
 function updateLiveReadings(){
@@ -670,7 +670,7 @@ function updateNav(){
  // planned is rebuilt by makePlan() even when the user is editing inputs.
  // A stale courseGenerated flag must not suppress navigation for valid plan points.
  const items=planned && Object.keys(planned).length ? planned : {};
- navUpdate("nav",items,livePosition,realMap,navSelected,v=>{navSelected=v;},k=>planGeo(k),(a,b)=>inverse(a,b));
+ navUpdate("",items,livePosition,realMap,navSelected,v=>{navSelected=v;},k=>planGeo(k),(a,b)=>inverse(a,b));
 }
 function stopLiveGps(){
  if(liveWatchId!==null){navigator.geolocation.clearWatch(liveWatchId);liveWatchId=null;}
@@ -931,7 +931,7 @@ function startRaceLiveGps(){
   updateRaceLiveReadings();updateRaceNav();
  },err=>{clearTimeout(waitingTimer);const msg=({1:'位置情報が拒否されました。ブラウザのサイト設定で位置情報を許可してください。',2:'現在位置を取得できません。屋外で再試行してください。',3:'GPS測位がタイムアウトしました。空の開けた場所で再試行してください。'}[err.code]||`位置情報エラー：${err.message||'詳細不明'}`);if(raceLiveWatchId!==null){navigator.geolocation.clearWatch(raceLiveWatchId);raceLiveWatchId=null;}$('raceLiveGps').textContent='リアルタイム現在地を表示';$('raceLiveStatus').textContent=msg;},{enableHighAccuracy:true,maximumAge:0,timeout:30000});
 }
-function updateRaceNav(){const pts=raceComputed?.points||{};navUpdate("raceNav",pts,raceLivePosition,raceMap,raceNavSelected,v=>raceNavSelected=v,k=>pts[k]||null,(a,b)=>raceInverse(a,b,raceRadii(a.lat,a.lon)));}
+function updateRaceNav(){const pts=raceComputed?.points||{};navUpdate("race",pts,raceLivePosition,raceMap,raceNavSelected,v=>raceNavSelected=v,k=>pts[k]||null,(a,b)=>raceInverse(a,b,raceRadii(a.lat,a.lon)));}
 $("raceNavTarget").addEventListener("change",e=>{raceNavSelected=e.target.value;updateRaceNav();navFocus("raceNav",raceMap,raceNavSelected,k=>raceComputed?.points?.[k]||null);});
 $("raceNavNext").addEventListener("click",()=>{const keys=Object.keys(raceComputed?.points||{}).filter(k=>!['finish','signal','outer'].includes(k));if(!keys.length)return;raceNavSelected=keys[(keys.indexOf(raceNavSelected)+1+keys.length)%keys.length];updateRaceNav();navFocus("raceNav",raceMap,raceNavSelected,k=>raceComputed?.points?.[k]||null);});
 function raceRender(){
