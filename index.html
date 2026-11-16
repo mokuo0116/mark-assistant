@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#102b3f">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<title>DOKKYO MARK ASSISTANT v3.0</title>
+<title>DOKKYO MARK ASSISTANT v3.3</title>
 <style>
 :root{--navy:#102b3f;--blue:#1676a5;--bg:#f3f6f8;--ink:#17232d;--muted:#657784;--line:#d8e1e7;--green:#16845b;--red:#c34c45}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif}
@@ -51,7 +51,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 </style>
 </head>
 <body>
-<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>MARK ASSISTANT <span style="font-size:11px;font-weight:500;opacity:.7">BETA 3.0</span></h1></header>
+<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>MARK ASSISTANT <span style="font-size:11px;font-weight:500;opacity:.7">BETA 3.3</span></h1></header>
 <nav><button class="active" data-tab="setting">コース設定</button><button data-tab="map">配置図</button><button data-tab="gps">GPS登録</button><button data-tab="analysis">コース診断</button><button data-tab="race">レース運営</button></nav>
 <main>
 <section id="setting" class="active">
@@ -151,7 +151,7 @@ https://..."></textarea></div>
  </div>
  <div class="card">
   <h2>レース運営モード</h2>
-  <p class="note">RASの共有設定をもとに計画マークを地図へ展開し、各マークの実測位置をGPS登録します。通常の練習コース設定とは独立しています。</p>
+  <p class="note">RASの共有設定をもとに実際に設置する計画マークを地図へ展開し、各マークの実測位置をGPS登録します。仮想基準点（4S′・4P′など）は表示しません。通常の練習コース設定とは独立しています。</p>
   <div class="field"><label>コース形式</label><select id="raceCourse"><option value="trapezoid">トラペゾイド</option><option value="lr">LR</option><option value="lg">LG</option></select></div>
   <h2 style="margin-top:14px">コース設定（マーク4基準）</h2>
   <div class="race-grid">
@@ -189,7 +189,7 @@ https://..."></textarea></div>
  <div class="race-warn">注意：これはRASの計算式を参考にした試作機能です。RASとの座標照合・実海面での検証が必要です。安全上重要な設置判断には、必ず公式情報・現場確認・複数人での照合を行ってください。</div>
 </section>
 
-<div class="footer">DOKKYO MARK ASSISTANT · BETA 3.2<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
+<div class="footer">DOKKYO MARK ASSISTANT · BETA 3.3<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
@@ -800,17 +800,16 @@ function raceCalc(){
   p['finish']=raceStep(p['3P'],c.f,norm(w+c.r23f),r);
  }else{
   p['4S']=raceStep(base,c.gw/2,norm(ws-90),r);p['4P']=raceStep(base,c.gw/2,norm(ws+90),r);
-  p["4S′"]=raceStep(p['4S'],100,norm(ws-180),r);p["4P′"]=raceStep(p['4P'],100,norm(ws-180),r);
   const finBearing=c.type==='lr'?norm(w+c.r23f):norm(w-c.r23f);p['finish']=raceStep(p['4P'],c.f,finBearing,r);
  }
  // Start geometry follows RAS etc(): signal boat -> outer; midpoint -> mark 4.
  const rs=raceRadii(c.signal.lat,c.signal.lon),aco=norm(ws-90),outer=raceStep(c.signal,c.s,aco,rs),center=raceStep(c.signal,c.s/2,aco,rs),start4=raceStep(center,c.d4,ws,rs);
  const start4S=raceStep(start4,c.gw/2,norm(ws-90),rs),start4P=raceStep(start4,c.gw/2,norm(ws+90),rs);
- p['signal']=c.signal;p['outer']=outer;p['start4']=start4;p['start4S']=start4S;p['start4P']=start4P;
+ p['signal']=c.signal;p['outer']=outer;p['start4']=start4;p['startLineS']=start4S;p['startLineP']=start4P;
  raceComputed={config:c,points:p};return raceComputed;
 }
 function raceCoord(p){const la=Math.floor(p.lat),lo=Math.floor(p.lon);return `N${la}°${((p.lat-la)*60).toFixed(4)}′ E${lo}°${((p.lon-lo)*60).toFixed(4)}′`;}
-function raceMarkLabel(k){return ({'1':'マーク1','2':'マーク2','3':'マーク3','4':'マーク4','3S':'3S（ゲート左舷）','3P':'3P（ゲート右舷）','4S':'4S（ゲート左舷）','4P':'4P（ゲート右舷）','finish':'フィニッシュ','signal':'シグナルボート','outer':'スタートライン外端','start4':'スタート側4マーク','start4S':'スタート側4S','start4P':'スタート側4P'}[k]||k)}
+function raceMarkLabel(k){return ({'1':'マーク1','2':'マーク2','3':'マーク3','4':'マーク4','3S':'3S（ゲート左舷）','3P':'3P（ゲート右舷）','4S':'コース側4S','4P':'コース側4P','finish':'フィニッシュ','signal':'シグナルボート','outer':'スタートライン外端','start4':'スタート側4マーク','startLineS':'スタートライン側マーク（左端）','startLineP':'スタートライン側マーク（右端）'}[k]||k)}
 function raceRegisterGps(k){gps((f,e)=>{if(!f){$('raceStatus').textContent=e;return}raceActual[k]=f;raceSaveGps();raceRender();$('raceStatus').textContent=`${raceMarkLabel(k)}をGPS登録しました。精度 ±${Math.round(f.accuracy)}m`;});}
 function raceRemoveGps(k){delete raceActual[k];raceSaveGps();raceRender();}
 function raceRender(){
