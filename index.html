@@ -100,7 +100,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
  <div class="card"><h2>実地図（GPS位置）</h2><p class="note">青＝計画位置／黄＝実測位置／紫＝現在地。地図表示には通信が必要です。</p><div id="realMapEmpty" class="map-empty">地図を表示しています。初期中心は指定海域です。配置原点マークを登録するとコース全体へ移動します。</div><div id="realMap" hidden></div>
   <div class="field" style="margin-top:12px">
    <label style="display:flex;align-items:center;gap:8px;color:var(--ink);font-size:13px">
-    <input id="sagamiOverlayToggle" type="checkbox" style="width:auto;transform:scale(1.15)">
+    <input id="sagamiOverlayToggle" type="checkbox" checked style="width:auto;transform:scale(1.15)">
     相模湾レース海面図（2024）を重ねて表示
    </label>
    <small class="note">添付PDFを地図に重ねます（位置合わせは概算）。</small>
@@ -189,7 +189,7 @@ https://..."></textarea></div>
   <div class="status" id="raceStatus">初期値はサンプルです。実際の設置前に入力値と座標を確認してください。</div>
  </div>
  <div class="card"><h2>レース海面図</h2><p class="note">青＝RAS計画位置／黄＝GPS実測位置／紫＝レスキュー艇の現在地。地図表示には通信が必要です。</p><div id="raceMap" class="race-map"></div>
-  <div class="field" style="margin-top:12px"><label style="display:flex;align-items:center;gap:8px;color:var(--ink);font-size:13px"><input id="raceSagamiOverlayToggle" type="checkbox" style="width:auto;transform:scale(1.15)">相模湾レース海面図（2024）を重ねて表示</label><small class="note">位置合わせは概算です。</small></div>
+  <div class="field" style="margin-top:12px"><label style="display:flex;align-items:center;gap:8px;color:var(--ink);font-size:13px"><input id="raceSagamiOverlayToggle" type="checkbox" checked style="width:auto;transform:scale(1.15)">相模湾レース海面図（2024）を重ねて表示</label><small class="note">位置合わせは概算です。</small></div>
   <div class="field" style="margin-top:8px"><label style="display:flex;align-items:center;gap:8px;color:var(--ink);font-size:13px"><input id="raceHakkeiAreaToggle" type="checkbox" style="width:auto;transform:scale(1.15)">八景島マリーナ帆走区域（概算）を表示</label><small class="note">公式境界ではありません。</small></div>
   <button class="primary full" id="raceLiveGps" style="margin-top:10px">リアルタイム現在地を表示</button><div class="status" id="raceLiveStatus">現在地の追跡は停止中です。</div>
   <div id="raceLiveReadings" class="note" style="margin-top:8px">現在地を取得すると、計画マークまでの距離・方位を表示します。</div>
@@ -200,7 +200,7 @@ https://..."></textarea></div>
  <div class="race-warn">注意：これはRASの計算式を参考にした試作機能です。RASとの座標照合・実海面での検証が必要です。安全上重要な設置判断には、必ず公式情報・現場確認・複数人での照合を行ってください。</div>
 </section>
 
-<div class="footer">DOKKYO MARK ASSISTANT · BETA 4.2<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
+<div class="footer">DOKKYO MARK ASSISTANT · BETA 4.3<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
@@ -630,13 +630,13 @@ function bearingText(n){return `${String(Math.round(n)%360).padStart(3,"0")}°`}
 function navUpdate(prefix,items,position,map,selected,setSelected,resolve,inverseFn){
  const select=$(prefix+'NavTarget'),readout=$(prefix+'NavReadout'),hint=$(prefix+'NavHint');
  const keys=Object.keys(items||{}).filter(k=>k!=="R"&&k!=="finish"&&k!=="signal"&&k!=="outer");
- if(!keys.length){select.innerHTML='<option value="">計画マークなし</option>';readout.textContent='コース計算待ち';hint.textContent='先にコースを計算してください。';return;}
+ if(!keys.length){select.innerHTML='<option value="">計画マークなし</option>';readout.textContent='計画マークがありません';hint.textContent='コース生成ボタンを押し、計画マークが作成されたことを確認してください。';return;}
  if(!keys.includes(selected)){selected=keys[0];setSelected(selected);}
  select.innerHTML=keys.map(k=>`<option value="${k}" ${k===selected?'selected':''}>${k}：${(labels[k]||k)}</option>`).join('');
  const target=resolve(selected);
  if(!target){
    readout.textContent='計画マーク座標を取得できません';
-   hint.textContent='コース生成状態は確認できました。配置原点マークの種類と緯度・経度の登録状態を確認してください。';
+   hint.textContent='計画点はありますが座標へ変換できません。配置原点のGPS登録と、現在のコースに対応する基準マークを確認してください。';
    return;
  }
  if(!position){readout.textContent=`${selected} を選択中`;hint.textContent='リアルタイムGPSを開始すると距離・方位・到達目安を表示します。';return;}
@@ -667,11 +667,10 @@ function updateLiveReadings(){
  $("liveReadings").innerHTML=`<strong>現在地から計画ポイントまで</strong><table><thead><tr><th>ポイント</th><th>距離</th><th>方位</th></tr></thead><tbody>${rows}</tbody></table><small>方位は真北000°基準・時計回り。GPS精度 ±${Math.round(livePosition.accuracy||0)}m</small>`;
 }
 function updateNav(){
- const items=courseGenerated?planned:{};
- navUpdate("nav",items,livePosition,realMap,navSelected,v=>navSelected=v,k=>{
-   const o=origin();
-   return o&&planned[k]?geo(o,planned[k]):null;
- },(a,b)=>inverse(a,b));
+ // planned is rebuilt by makePlan() even when the user is editing inputs.
+ // A stale courseGenerated flag must not suppress navigation for valid plan points.
+ const items=planned && Object.keys(planned).length ? planned : {};
+ navUpdate("nav",items,livePosition,realMap,navSelected,v=>{navSelected=v;},k=>planGeo(k),(a,b)=>inverse(a,b));
 }
 function stopLiveGps(){
  if(liveWatchId!==null){navigator.geolocation.clearWatch(liveWatchId);liveWatchId=null;}
@@ -799,7 +798,7 @@ $("hakkeiAreaToggle").onchange=updateHakkeiArea;
 
 $("capture").onclick=()=>{let k=$("gpsMark").value;gps((f,e)=>{if(!f){$("gpsStatus").textContent=e;return}actual[k]=f;if(k===anchorTarget()){anchorKey=k;$("baseLat").value=f.lat.toFixed(6);$("baseLon").value=f.lon.toFixed(6);$("baseStatus").textContent=`${labels[k]||k}を配置原点として登録しました。`}$("gpsStatus").textContent=`${labels[k]||k}を登録。${f.lat.toFixed(6)}, ${f.lon.toFixed(6)} ／ 精度 ±${Math.round(f.accuracy)}m`;renderAll()})};
 $("clearGps").onclick=()=>{if(confirm("実測座標をすべて削除しますか？")){actual={};renderAll();$("gpsStatus").textContent="実測座標を削除しました。"}};
-document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll("main section").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab));renderAll();if(b.dataset.tab==="map"&&realMap)setTimeout(()=>realMap.invalidateSize(),120);if(b.dataset.tab==="race"&&raceMap)setTimeout(()=>{raceMap.invalidateSize();if(raceComputed&&!raceMap._raceHasPlanView&&!raceMap._raceUserMovedView){raceMap.fitBounds(raceLayer.getBounds().pad(0.12),{maxZoom:17});raceMap._raceHasPlanView=true;}},120)});
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll("main section").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab));renderAll();if(b.dataset.tab==="map"&&realMap)setTimeout(()=>{realMap.invalidateSize();updateSagamiOverlay();},120);if(b.dataset.tab==="race"&&raceMap)setTimeout(()=>{raceMap.invalidateSize();updateRaceSagamiOverlay();if(raceComputed&&!raceMap._raceHasPlanView&&!raceMap._raceUserMovedView){raceMap.fitBounds(raceLayer.getBounds().pad(0.12),{maxZoom:17});raceMap._raceHasPlanView=true;}},120)});
 ["wind","d14","startDist","finishDist","finishLine","baseLat","baseLon"].forEach(k=>$(k).addEventListener("change",()=>makePlan(false)));
 function initializeApp(){
  // 端末内の前回データを読み込む。
@@ -885,7 +884,7 @@ function updateRaceSagamiOverlay(){
  if(!raceMap)return;
  const enabled=$('raceSagamiOverlayToggle').checked;
  if(enabled&&!raceSagamiOverlay){
-  raceSagamiOverlay=L.imageOverlay(SAGAMI_RACE_MAP_IMAGE,[[35.2583333,139.475],[35.3000000,139.575]],{opacity:0.72,interactive:false}).addTo(raceMap);
+  raceSagamiOverlay=L.imageOverlay(SAGAMI_RACE_MAP_IMAGE,[[35.2583333,139.475],[35.3000000,139.575]],{opacity:0.78,interactive:false,zIndex:250}).addTo(raceMap);
  }else if(!enabled&&raceSagamiOverlay){raceMap.removeLayer(raceSagamiOverlay);raceSagamiOverlay=null;}
  updateRaceHakkeiArea();
 }
