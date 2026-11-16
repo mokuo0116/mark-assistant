@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#102b3f">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<title>DOKKYO MARK ASSISTANT v2.7</title>
+<title>DOKKYO MARK ASSISTANT v2.9</title>
 <style>
 :root{--navy:#102b3f;--blue:#1676a5;--bg:#f3f6f8;--ink:#17232d;--muted:#657784;--line:#d8e1e7;--green:#16845b;--red:#c34c45}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif}
@@ -23,6 +23,12 @@ button.primary{background:var(--blue);color:white}button.secondary{background:#e
 .markrow{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid #edf1f3}.markrow:last-child{border:0}.markrow strong{font-size:14px}.markrow small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
 .kpis{display:grid;grid-template-columns:1fr 1fr;gap:9px}.kpi{background:#f4f8fa;padding:12px;border-radius:10px}.kpi small{display:block;color:var(--muted);font-size:11px}.kpi strong{font-size:21px;font-variant-numeric:tabular-nums}
 table{width:100%;border-collapse:collapse;font-size:12px}td,th{text-align:left;padding:9px 5px;border-bottom:1px solid #e8eef1}th{color:var(--muted)}
+details.help{margin:8px 0 0;padding:9px 11px;border:1px solid #e6edf1;border-radius:9px;background:#f8fafb}
+details.help summary{font-size:12px;font-weight:700;color:var(--blue);cursor:pointer}
+details.help .note{margin:8px 0 0}
+.card h2{margin-bottom:10px}
+section .card>p.note{margin:0 0 12px}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #79bde0;outline-offset:2px}
 .footer{text-align:center;color:#82919a;font-size:10px;padding:15px}
 @media(min-width:600px){main{padding:22px}}
 </style>
@@ -37,7 +43,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}td,th{text-align:left;p
 </style>
 </head>
 <body>
-<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>MARK ASSISTANT <span style="font-size:11px;font-weight:500;opacity:.7">BETA 2.7</span></h1></header>
+<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>MARK ASSISTANT <span style="font-size:11px;font-weight:500;opacity:.7">BETA 2.9</span></h1></header>
 <nav><button class="active" data-tab="setting">コース設定</button><button data-tab="map">配置図</button><button data-tab="gps">GPS登録</button><button data-tab="analysis">コース診断</button></nav>
 <main>
 <section id="setting" class="active">
@@ -52,7 +58,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}td,th{text-align:left;p
    <h2 style="margin-top:12px">練習コース追加設定</h2>
    <div class="field" id="practiceAnchorField">
     <label>配置原点（基準マーク）</label>
-    <select id="practiceAnchor"><option value="4P">4Pマーク</option><option value="1">1番マーク</option></select>
+    <select id="practiceAnchor"><option value="4P">4Pマーク</option><option value="1">1マーク</option></select>
     <small class="note">選択したマークの実測GPS位置を基準に、コース全体を配置します。</small>
    </div>
    <div class="grid">
@@ -60,14 +66,15 @@ table{width:100%;border-collapse:collapse;font-size:12px}td,th{text-align:left;p
     <div class="field" id="finishDistField"><label>4-フィニッシュ基準距離（m）</label><input id="finishDist" type="number" min="1" value="200"></div>
     <div class="field" id="finishLineField"><label>フィニッシュライン長（m）</label><input id="finishLine" type="number" min="1" value="50"></div>
    </div>
-   <p class="note">練習コースでは4Pを配置原点として4S・4Pを左右対称に配置します。入力するスタートライン全長は4S–4P間の実際の距離です。ラインなしでは、4Sから風軸+120°、4Pから風軸−160°に引いた2本の半直線の交点をレスキュー艇の待機位置とします。ラインなしのフィニッシュ位置は角度とスタートライン長だけで決まるため、フィニッシュ距離・ライン長の追加設定はありません。ラインありの場合のみ、フィニッシュ基準距離とフィニッシュライン長を設定します。</p>
+   <p class="note">練習コースでは基準マークを選択できます。スタートライン長は4S–4P間の全長です。</p>
+   <details class="help"><summary>練習コースの配置ルール</summary><p class="note">選択した基準マーク（4Pまたは1マーク）の実測位置を基準にコースを配置します。4S・4Pは左右対称です。ラインなしでは4Sから風軸+120°、4Pから風軸−160°に引いた半直線の交点をレスキュー艇の待機位置とします。フィニッシュ距離・ライン長はラインありの場合のみ設定します。</p></details>
   </div>
-  <p class="note">風軸は「風が吹いてくる方向」を北=000°、東=090°の真方位で入力します。コースの1番マークを風上側、4番マークを風下側として生成します。</p>
+  <p class="note">風軸は風が吹いてくる方向（北000°・東090°）です。</p>
   <button class="primary full" id="generate">コースを生成</button>
  </div>
  <div class="card">
   <h2>配置原点マークの登録</h2>
-  <p class="note">上下・トライアングルは1番が基準です。練習コースでは上の設定で4Pまたは1番を選択できます。選択したマークを実際に設置する位置でGPS登録してください。</p>
+  <p class="note">選択中の基準マークを設置した位置でGPS登録してください。</p>
   <div class="grid"><div class="field"><label>配置原点マークの緯度</label><input id="baseLat" type="number" step="0.000001" placeholder="緯度"></div><div class="field"><label>配置原点マークの経度</label><input id="baseLon" type="number" step="0.000001" placeholder="経度"></div></div>
   <button class="primary full" id="baseAndMarkGps" style="margin-top:8px">配置原点マークをGPS登録</button>
   <div class="status" id="baseStatus">配置原点マークは未登録です。</div>
@@ -82,43 +89,43 @@ table{width:100%;border-collapse:collapse;font-size:12px}td,th{text-align:left;p
  </div>
 </section>
 <section id="map">
- <div class="card"><h2>実地図（GPS位置）</h2><p class="note">OpenStreetMapを背景地図として表示します。青い番号は計画位置、黄色い番号＋チェックはGPS実測位置、紫色の矢印は自艇の現在位置です。地図タイルの読み込みにはインターネット接続が必要です。</p><div id="realMapEmpty" class="map-empty">地図を表示しています。初期中心は指定海域です。配置原点マークを登録するとコース全体へ移動します。</div><div id="realMap" hidden></div>
+ <div class="card"><h2>実地図（GPS位置）</h2><p class="note">青＝計画位置／黄＝実測位置／紫＝現在地。地図表示には通信が必要です。</p><div id="realMapEmpty" class="map-empty">地図を表示しています。初期中心は指定海域です。配置原点マークを登録するとコース全体へ移動します。</div><div id="realMap" hidden></div>
   <div class="field" style="margin-top:12px">
    <label style="display:flex;align-items:center;gap:8px;color:var(--ink);font-size:13px">
     <input id="sagamiOverlayToggle" type="checkbox" style="width:auto;transform:scale(1.15)">
     相模湾レース海面図（2024）を重ねて表示
    </label>
-   <small class="note">添付された海面図の緯度・経度目盛を基準に地図へ重ねます。表示位置には画像由来の誤差があります。</small>
+   <small class="note">添付PDFを地図に重ねます（位置合わせは概算）。</small>
   </div>
   <div class="field" style="margin-top:8px">
    <label style="display:flex;align-items:center;gap:8px;color:var(--ink);font-size:13px">
     <input id="hakkeiAreaToggle" type="checkbox" style="width:auto;transform:scale(1.15)">
     八景島マリーナ帆走区域（概算）を表示
    </label>
-   <small class="note">左下端の提供座標を基準に画像から概算した区域です。公式境界・航行可能範囲を示すものではありません。</small>
+   <small class="note">提供座標3点＋画像推定点による概略表示。公式境界ではありません。</small>
   </div>
   <button class="primary full" id="liveGps" style="margin-top:10px">リアルタイム現在地を表示</button>
   <div class="status" id="liveStatus">現在地の追跡は停止中です。</div>
   <div id="liveReadings" class="note" style="margin-top:8px">現在地を取得すると、計画ポイントまでの距離・方位を表示します。</div>
-  <p class="note">地図データ：© OpenStreetMap contributors。相模湾レース海面図は参考画像の重ね合わせです。海図ではありません。航行・障害物・水深等の安全確認には使用しないでください。</p></div>
- <div class="card"><h2>計画コース・実測位置</h2><p class="note">縮尺を合わせた相対配置図です。紫の「中点M」はラインあり練習コースでのみ表示される、フィニッシュラインの計画中点です。練習コースの4S・4Pは4Pを配置原点として左右対称に配置します。ラインなしのレスキュー艇は4S +120°と4P −160°の交点です。背景の海図・地図タイルは未接続です。</p><canvas id="plot" width="700" height="650"></canvas><div class="status" id="mapStatus"></div></div>
+  <details class="help"><summary>地図の注意事項</summary><p class="note">© OpenStreetMap contributors。重ね合わせ画像・帆走区域は参考表示であり、海図や航行安全情報の代わりにはなりません。水深・障害物・航行規制は最新の公式情報で確認してください。</p></details></div>
+ <div class="card"><h2>計画コース・実測位置</h2><p class="note">計画コースと実測位置の相対配置図です。紫のMはラインあり練習コースのフィニッシュ中点です。</p><canvas id="plot" width="700" height="650"></canvas><div class="status" id="mapStatus"></div></div>
  <div class="card"><h2>マーク一覧</h2><div id="markList"></div></div>
 </section>
 <section id="gps">
- <div class="card"><h2>GPSマーク登録</h2><p class="note">レスキュー艇がマークの近くで安定してから、番号を選んでGPS位置を取得します。測位精度も保存します。</p>
+ <div class="card"><h2>GPSマーク登録</h2><p class="note">艇がマーク付近で安定してから登録してください。測位精度も保存します。</p>
   <div class="field"><label>登録するマーク</label><select id="gpsMark"></select></div><button class="primary full" id="capture">現在位置を取得して登録</button><div class="status" id="gpsStatus">GPS未取得</div>
  </div>
  <div class="card"><h2>登録済み座標</h2><div id="gpsList"></div><button class="danger full" id="clearGps">実測座標をすべて消去</button></div>
 </section>
 <section id="analysis">
- <div class="card"><h2>コース診断</h2><p class="note">計画座標と実測GPS座標を比較します。端末のGPS精度を考慮し、誤差内・再測位・修正候補を区別します。修正方向は現在位置から計画位置へ向かう目安です。</p>
+ <div class="card"><h2>コース診断</h2><p class="note">計画位置と実測位置を比較します。GPS精度を考慮した参考診断です。</p>
   <div class="kpis"><div class="kpi"><small>計画 1-4距離</small><strong id="plannedDist">—</strong></div><div class="kpi"><small>実測 1-4距離</small><strong id="actualDist">—</strong></div><div class="kpi"><small>計画 1→4 方位</small><strong id="plannedBearing">—</strong></div><div class="kpi"><small>実測 1→4 方位</small><strong id="actualBearing">—</strong></div></div>
   <div class="status" id="diagStatus">1番・4番を登録すると診断できます。</div>
  </div>
  <div class="card"><h2>各マークの設置誤差</h2><div id="errors"></div></div>
  <div class="card"><h2>ライン診断</h2><div id="lineDiag" class="status">練習コースのライン両端を登録すると実測値を表示します。</div></div>
 </section>
-<div class="footer">DOKKYO MARK ASSISTANT · BETA 2.7<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
+<div class="footer">DOKKYO MARK ASSISTANT · BETA 2.9<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
@@ -524,12 +531,12 @@ function updateHakkeiArea(){
    // Screenshot-derived approximation. The southwest corner is the user's supplied coordinate.
    // Other vertices are estimated from the screenshot scale and north-up orientation.
    const area=[
-    [35.36309,139.66657], // northwest
-    [35.36184,139.68112], // northeast
-    [35.34942,139.68035], // southeast
-    [35.34246437101698,139.66417036950588], // southwest: user-provided anchor
-    [35.35694,139.66425], // west-side bend
-    [35.35863,139.66665]  // upper west-side bend
+    [35.36309,139.66657], // northwest: image estimate
+    [35.36174377931756,139.6807313337922], // northeast: user-provided
+    [35.34947082422643,139.68008156865835], // southeast: user-provided
+    [35.34246437101698,139.66417036950588], // southwest: user-provided
+    [35.35694,139.66425], // west-side bend: image estimate
+    [35.35863,139.66665]  // upper west-side bend: image estimate
    ];
    hakkeiAreaLayer=L.polygon(area,{
     color:"#6426e8",weight:4,opacity:0.95,
@@ -657,14 +664,20 @@ function renderAll(){renderLists();draw();diagnostics();updateRealMap();updateLi
 function removeActual(k){delete actual[k];renderAll()}
 function updatePracticeFields(){
  const c=$("course").value;
- const practice=["practice","practiceLine"].includes(c);
+ const practice=(c==="practice"||c==="practiceLine");
  $("practiceFields").hidden=!practice;
  $("practiceAnchorField").hidden=!practice;
+ $("practiceAnchor").disabled=!practice;
  $("finishDistField").hidden=c!=="practiceLine";
  $("finishLineField").hidden=c!=="practiceLine";
 }
 $("course").onchange=()=>{updatePracticeFields();makePlan(false)};
-$("practiceAnchor").onchange=()=>{makePlan(false)};
+$("practiceAnchor").onchange=()=>{
+ anchorKey=null;
+ $("baseLat").value="";$("baseLon").value="";
+ $("baseStatus").textContent="基準マークを変更しました。新しい基準マークのGPS位置を登録してください。";
+ makePlan(false);
+};
 $("generate").onclick=()=>makePlan(true);
 $("baseAndMarkGps").onclick=registerBaseAndMark;
 $("sharePlan").onclick=createShareLink;
