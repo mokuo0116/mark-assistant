@@ -3,9 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#002D8C">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<title>DOKKYO Mark Assistant BETA 6.7</title>
+<title>DOKKYO Mark Assistant BETA 6.8</title>
 <style>
 :root{--navy:#002D8C;--blue:#002D8C;--bg:#ffffff;--ink:#17232d;--muted:#657784;--line:#d8e1e7;--green:#16845b;--red:#c34c45}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif}
@@ -55,12 +54,42 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 
 </style>
 
-<link rel="icon" type="image/png" sizes="48x48" href="assets/favicon-48.png">
-<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="192x192" href="assets/app-icon-192.png">
+
+<link rel="icon" type="image/png" sizes="48x48" href="./assets/favicon-48.png">
+<link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./assets/app-icon-192.png">
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#0D477D">
+<style>
+/* BETA 6.8: isolate Leaflet layers inside their own map viewport */
+#realMap, #raceMap.race-map {
+  position: relative !important;
+  isolation: isolate;
+  overflow: hidden;
+  contain: layout paint;
+}
+#raceMap .leaflet-pane,
+#raceMap .leaflet-control-container {
+  position: absolute;
+}
+#raceMap .sagami-chart-pane {
+  z-index: 350 !important;
+  pointer-events: none !important;
+}
+#raceMap .sagami-chart-pane img,
+#raceMap .leaflet-image-layer {
+  position: absolute !important;
+  max-width: none !important;
+}
+#raceMap .map-recenter {
+  position: absolute !important;
+  z-index: 1200 !important;
+}
+</style>
+
 </head>
 <body>
-<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>DOKKYO Mark Assistant <span style="font-size:11px;font-weight:500;opacity:.7">BETA 6.7</span></h1></header>
+<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>DOKKYO Mark Assistant <span style="font-size:11px;font-weight:500;opacity:.7">BETA 6.8</span></h1></header>
 <nav aria-label="作業モード"><button class="active" data-tab="setting">コース準備</button><button data-tab="map">設置</button><button data-tab="analysis">配置評価</button><button data-tab="race">レース運営</button><button data-tab="share">共有</button></nav>
 <main>
 <section id="setting" class="active">
@@ -673,6 +702,8 @@ function ensureSagamiChartPane(map){
  if(!map)return;
  if(!map.getPane("sagamiChartPane")){
   const pane=map.createPane("sagamiChartPane");
+  pane.classList.add("sagami-chart-pane");
+  pane.style.position="absolute";
   pane.style.zIndex="350"; // tiles=200, chart=350, vector overlays=400, markers=600
   pane.style.pointerEvents="none";
  }
