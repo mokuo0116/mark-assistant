@@ -35,6 +35,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 .race-point-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}\n.race-error-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}.race-error-table th,.race-error-table td{padding:8px 5px;border-bottom:1px solid var(--line);text-align:left}.race-error-table th{color:var(--muted);font-weight:700}.race-delta{font-weight:800;font-variant-numeric:tabular-nums}
 .race-point-actions button{font-size:12px;padding:6px 9px}
 .ras-lock-warning{color:#c62828!important;font-weight:800;display:block;margin-top:7px}.ras-lock-warning::before{content:"🔒 ";}
+
+.map-recenter{position:absolute;z-index:1200;top:12px;right:12px;background:#fff;color:#002D8C;border:2px solid #002D8C;border-radius:9px;padding:9px 12px;font-size:13px;font-weight:800;box-shadow:0 2px 8px rgba(0,0,0,.22);cursor:pointer}
+.map-recenter:active{transform:scale(.97)}
 </style>
 <style>
 #realMap{height:420px;width:100%;border:1px solid var(--line);border-radius:10px;z-index:1}
@@ -98,7 +101,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
  </div>
 </section>
 <section id="map">
- <div class="card"><h2>設置マップ</h2><p class="note">青＝計画位置／黄＝実測位置／紫＝現在地。地図表示には通信が必要です。</p><div id="realMapEmpty" class="map-empty">地図を表示しています。初期中心は指定海域です。配置原点マークを登録するとコース全体へ移動します。</div><div id="realMap" hidden></div>
+ <div class="card"><h2>設置マップ</h2><p class="note">青＝計画位置／黄＝実測位置／紫＝現在地。地図表示には通信が必要です。</p><div id="realMapEmpty" class="map-empty">地図を表示しています。初期中心は指定海域です。配置原点マークを登録するとコース全体へ移動します。</div><div id="realMap" hidden><button type="button" class="map-recenter" id="realMapRecenter" aria-label="現在地に戻る">◎ 現在地に戻る</button></div>
   <details class="help" style="margin-top:8px"><summary>帆走海面表示の設定</summary><div class="field" style="margin-top:12px">
    <label style="display:flex;align-items:center;gap:8px;color:var(--ink);font-size:13px">
     <input id="sagamiOverlayToggle" type="checkbox" checked style="width:auto;transform:scale(1.15)">
@@ -206,18 +209,18 @@ https://..."></textarea></div>
   <div class="field" style="margin:10px 0"><label><input id="raceUseStartGeometry" type="checkbox" checked> スタート設定から算出した4マークを基準にする（風軸・シグナル艇・距離の変更に追従）</label></div>
   <div id="raceConsistency" class="status" style="margin-bottom:8px">4マーク座標の整合性：未計算</div>
   <button class="secondary full" id="raceUseStart4" style="margin-bottom:8px">スタート計算の4マーク座標をコース基準に反映</button>
-  </details>
-<button class="primary full" id="raceCalculate">再計算</button>
-  <div class="status" id="raceStatus"></div>
- </div>
- <div class="card"><h2>レース海面図</h2><div id="raceMap" class="race-map"></div>
-  <details class="help" style="margin-top:8px"><summary>帆走海面表示の設定</summary><div class="field" style="margin-top:12px"><label style="display:flex;align-items:center;gap:8px;color:var(--ink);font-size:13px"><input id="raceSagamiOverlayToggle" type="checkbox" checked style="width:auto;transform:scale(1.15)">相模湾レース海面図（2024）を重ねて表示</label><small class="note"></small></div>
-  <div class="field" style="margin-top:8px"><label style="display:flex;align-items:center;gap:8px;color:var(--ink);font-size:13px"><input id="raceHakkeiAreaToggle" type="checkbox" checked style="width:auto;transform:scale(1.15)">八景島マリーナ帆走区域（概算）を表示</label><small class="note">公式境界ではありません。</small></div></details>
-  <button class="primary full" id="raceLiveGps" style="margin-top:10px">現在地の追跡を停止</button><div class="status" id="raceLiveStatus">現在地を自動取得しています。</div>
   <div class="card" style="margin-top:10px;padding:12px;border:2px solid var(--brand);">
    <button class="primary full" id="raceSetReference" style="min-height:56px;font-size:17px;font-weight:800">◎ 現在地をシグナルボート位置に登録</button>
    <div class="status" id="raceReferenceStatus" style="margin-top:6px">GPS現在地をシグナルボート座標に反映します。</div>
   </div>
+  </details>
+<button class="primary full" id="raceCalculate">再計算</button>
+  <div class="status" id="raceStatus"></div>
+ </div>
+ <div class="card"><h2>レース海面図</h2><div id="raceMap" class="race-map"><button type="button" class="map-recenter" id="raceMapRecenter" aria-label="現在地に戻る">◎ 現在地に戻る</button></div>
+  <details class="help" style="margin-top:8px"><summary>帆走海面表示の設定</summary><div class="field" style="margin-top:12px"><label style="display:flex;align-items:center;gap:8px;color:var(--ink);font-size:13px"><input id="raceSagamiOverlayToggle" type="checkbox" checked style="width:auto;transform:scale(1.15)">相模湾レース海面図（2024）を重ねて表示</label><small class="note"></small></div>
+  <div class="field" style="margin-top:8px"><label style="display:flex;align-items:center;gap:8px;color:var(--ink);font-size:13px"><input id="raceHakkeiAreaToggle" type="checkbox" checked style="width:auto;transform:scale(1.15)">八景島マリーナ帆走区域（概算）を表示</label><small class="note">公式境界ではありません。</small></div></details>
+  <button class="primary full" id="raceLiveGps" style="margin-top:10px">現在地の追跡を停止</button><div class="status" id="raceLiveStatus">現在地を自動取得しています。</div>
   <div class="status" id="raceNavPanel" style="margin-top:12px"><strong>マーク誘導</strong><div class="race-grid" style="margin-top:8px"><div class="field"><label>誘導先マーク</label><select id="raceNavTarget"></select></div><div class="field" style="display:flex;align-items:end"><button class="secondary full" id="raceNavNext">次のマークへ</button></div></div><div id="raceNavReadout" style="font-size:18px;font-weight:800;margin-top:8px">コース計算待ち</div><small id="raceNavHint">誘導先を選択すると地図上で位置を確認できます。</small></div>
   <div class="card"><h2>計算されたマーク座標</h2><div id="racePoints" class="race-results"><p class="note">コース計算後に座標を表示します。</p></div></div>
   <p class="note">マークをタップすると座標を確認できます。</p></div>
@@ -994,6 +997,16 @@ function startRaceLiveGps(){
 function updateRaceNav(){const pts=raceComputed?.points||{};navUpdate("race",pts,raceLivePosition,raceMap,raceNavSelected,v=>raceNavSelected=v,k=>pts[k]||null,(a,b)=>raceInverse(a,b,raceRadii(a.lat,a.lon)));}
 $("raceNavTarget").addEventListener("change",e=>{raceNavSelected=e.target.value;updateRaceNav();navFocus("raceNav",raceMap,raceNavSelected,k=>raceComputed?.points?.[k]||null);});
 $("raceNavNext").addEventListener("click",()=>{const keys=Object.keys(raceComputed?.points||{}).filter(k=>!['finish','signal','outer'].includes(k));if(!keys.length)return;raceNavSelected=keys[(keys.indexOf(raceNavSelected)+1+keys.length)%keys.length];updateRaceNav();navFocus("raceNav",raceMap,raceNavSelected,k=>raceComputed?.points?.[k]||null);});
+function recenterOnCurrent(map,position,kind){
+ if(!map){return;}
+ if(!position){const status=$(kind==='race'?'raceLiveStatus':'liveStatus');if(status)status.textContent='現在地を取得中です。測位後にもう一度押してください。';return;}
+ map._programmaticRecenter=true;
+ map.setView([position.lat,position.lon],17,{animate:true});
+ if(kind==='race'){map._raceHasPlanView=true;map._raceUserMovedView=true;}else{map._hasCourseView=true;map._userMovedView=true;}
+ setTimeout(()=>{if(map)map._programmaticRecenter=false;},350);
+}
+$('realMapRecenter').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();recenterOnCurrent(realMap,livePosition,'normal');});
+$('raceMapRecenter').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();recenterOnCurrent(raceMap,raceLivePosition,'race');});
 function raceSetCurrentPositionAsReference(){
  const apply=f=>{
   if(!f){$('raceReferenceStatus').textContent='現在地を取得できませんでした。';return;}
