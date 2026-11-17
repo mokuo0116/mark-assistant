@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#002D8C">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<title>DOKKYO Mark Assistant BETA 5.9</title>
+<title>DOKKYO Mark Assistant BETA 6.1</title>
 <style>
 :root{--navy:#002D8C;--blue:#002D8C;--bg:#ffffff;--ink:#17232d;--muted:#657784;--line:#d8e1e7;--green:#16845b;--red:#c34c45}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif}
@@ -55,8 +55,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 </style>
 </head>
 <body>
-<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>DOKKYO Mark Assistant <span style="font-size:11px;font-weight:500;opacity:.7">BETA 5.9</span></h1></header>
-<nav aria-label="作業モード"><button class="active" data-tab="setting">コース準備</button><button data-tab="map">設置</button><button data-tab="analysis">配置評価</button><button data-tab="race">レース運営</button></nav>
+<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>DOKKYO Mark Assistant <span style="font-size:11px;font-weight:500;opacity:.7">BETA 6.1</span></h1></header>
+<nav aria-label="作業モード"><button class="active" data-tab="setting">コース準備</button><button data-tab="map">設置</button><button data-tab="analysis">配置評価</button><button data-tab="race">レース運営</button><button data-tab="share">共有</button></nav>
 <main>
 <section id="setting" class="active">
  <div class="card">
@@ -92,11 +92,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
   <div class="status" id="baseStatus">配置原点マークは未登録です。</div>
  </div>
  <div class="card">
-  <h2>コース共有・履歴</h2>
-  <p class="note">現在のコース設定、配置原点マークの座標、GPS登録済みマークを含む共有リンクを作成します。リンクを開いた相手の画面に同じデータを読み込みます。</p>
-  <button class="primary full" id="sharePlan">全データを共有リンクにする</button>
-  <div class="status" id="shareStatus">共有リンクはURLにデータを含めます。長大なデータでは共有できない場合があります。</div>
-  <button class="secondary full" id="saveHistory" style="margin-top:8px">現在のコース設定を履歴に保存</button>
+  <h2>コース履歴</h2>
+  <button class="secondary full" id="saveHistory">現在のコース設定を履歴に保存</button>
   <div id="historyList" class="note" style="margin-top:10px">保存された履歴はありません。</div>
  </div>
 </section>
@@ -138,11 +135,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
  <div class="card"><h2>ライン診断</h2><div id="lineDiag" class="status">練習コースのライン両端を登録すると実測値を表示します。</div></div>
 </section>
 
-<section id="race">
+<section id="share">
  <div class="card">
-  <h2>マークレイヤー共有メッセージを読み込む</h2>
-  <p class="note">運営LINEの共有メッセージを、説明文や見出しを含めてそのまま貼り付けてください。座標行とマークレイヤーのURLを自動で抽出します。</p>
-  <div class="field"><label for="rasPaste">マークレイヤー共有メッセージ</label><textarea id="rasPaste" rows="9" placeholder="シグナルボート:
+  <h2>受信：マークレイヤー → DMA</h2>
+  <p class="note">マークレイヤーの共有メッセージまたはリンクを貼り付けて、レース設定を読み込みます。</p>
+  <div class="field"><label for="rasPaste">共有メッセージ</label><textarea id="rasPaste" rows="8" placeholder="シグナルボート:
 N35°17.38' E139°30.6000'
 マーク４:
 N35°17.4228' E139°30.6929'
@@ -150,25 +147,33 @@ N35°17.4228' E139°30.6929'
 https://...
 トラペゾイド（ｍ）用:
 https://..."></textarea></div>
-  <button class="primary full" id="rasImport">共有メッセージを解析して読み込む</button>
-  <div class="status" id="rasImportStatus">貼り付けたメッセージから必要な情報を抽出します。</div>
+  <button class="primary full" id="rasImport">解析して読み込む</button>
+  <div class="status" id="rasImportStatus">貼り付けた内容から必要な情報を抽出します。</div>
  </div>
  <div class="card">
-  <h2>DMA間でレース設定を共有</h2>
-  <p class="note">レース運営のコース設定・シグナル艇位置・計算結果・登録済み実測位置を、別のDOKKYO Mark Assistantへ共有します。</p>
+  <h2>送信：DMA → マークレイヤー</h2>
+  <p class="note">コース用リンクとスタート用リンクを作成します。マークレイヤーの各画面で使用してください。</p>
+  <button class="primary full" id="rasExport">共有リンクを作成</button>
+  <div class="field" style="margin-top:10px"><label for="rasExportMessage">共有メッセージ（コース用・スタート用）</label><textarea id="rasExportMessage" rows="9" readonly placeholder="共有リンクを作成すると、2種類のリンクが表示されます。"></textarea></div>
+  <button class="secondary full" id="rasExportCopy" disabled>共有メッセージをコピー</button>
+  <div class="status" id="rasExportStatus">コースを計算してから共有リンクを作成してください。</div>
+ </div>
+ <div class="card">
+  <h2>送信：DMA → DMA（コース準備）</h2>
+  <p class="note">通常運用のコース設定・配置原点・登録済み実測位置を共有します。</p>
+  <button class="primary full" id="sharePlan">全データを共有リンクにする</button>
+  <div class="status" id="shareStatus">共有リンクはURLにデータを含めます。長大なデータでは共有できない場合があります。</div>
+ </div>
+ <div class="card">
+  <h2>送信：DMA → DMA（レース運営）</h2>
+  <p class="note">レース運営のコース設定・シグナル位置・計算条件・登録済み実測位置を共有します。</p>
   <button class="primary full" id="raceDmaShare">DMA共有リンクを作成</button>
   <textarea id="raceDmaShareText" rows="4" readonly placeholder="作成した共有リンクがここに表示されます。" style="margin-top:8px"></textarea>
   <button class="secondary full" id="raceDmaShareCopy" disabled style="margin-top:8px">共有リンクをコピー</button>
   <div class="status" id="raceDmaShareStatus">現在のレース設定を共有できます。</div>
  </div>
- <div class="card">
-  <h2>DMAからマークレイヤーへ共有</h2>
-  <p class="note">コース用リンクとスタート用リンクを別々に作成します。マークレイヤーの各画面で必要なパラメータだけを渡します。</p>
-  <button class="primary full" id="rasExport">マークレイヤー共有リンクを作成</button>
-  <div class="field" style="margin-top:10px"><label for="rasExportMessage">共有メッセージ（コース用・スタート用）</label><textarea id="rasExportMessage" rows="10" readonly placeholder="「マークレイヤー共有リンクを作成」を押すと、2種類のリンクが表示されます。"></textarea></div>
-  <button class="secondary full" id="rasExportCopy" disabled>共有メッセージをコピー</button>
-  <div class="status" id="rasExportStatus">コースを計算してから共有リンクを作成してください。</div>
- </div>
+</section>
+<section id="race">
  <div class="card">
   <h2>レース運営モード</h2>
   
@@ -228,7 +233,7 @@ https://..."></textarea></div>
  <div class="race-warn">設置前に座標と現場状況を確認してください。</div>
 </section>
 
-<div class="footer">DOKKYO Mark Assistant · BETA 5.9<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
+<div class="footer">DOKKYO Mark Assistant · BETA 6.1<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
