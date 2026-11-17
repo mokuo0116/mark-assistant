@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#002D8C">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<title>DOKKYO Mark Assistant BETA 6.5</title>
+<title>DOKKYO Mark Assistant BETA 6.7</title>
 <style>
 :root{--navy:#002D8C;--blue:#002D8C;--bg:#ffffff;--ink:#17232d;--muted:#657784;--line:#d8e1e7;--green:#16845b;--red:#c34c45}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif}
@@ -36,6 +36,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 .race-point-actions button{font-size:12px;padding:6px 9px}
 .ras-lock-warning{color:#c62828!important;font-weight:800;display:block;margin-top:7px}.ras-lock-warning::before{content:"🔒 ";}
 
+#realMap,.race-map{position:relative;overflow:hidden}
 .map-recenter{position:absolute;z-index:1200;top:12px;right:12px;background:#fff;color:#002D8C;border:2px solid #002D8C;border-radius:9px;padding:9px 12px;font-size:13px;font-weight:800;box-shadow:0 2px 8px rgba(0,0,0,.22);cursor:pointer}
 .map-recenter:active{transform:scale(.97)}
 </style>
@@ -59,7 +60,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 <link rel="icon" type="image/png" sizes="192x192" href="assets/app-icon-192.png">
 </head>
 <body>
-<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>DOKKYO Mark Assistant <span style="font-size:11px;font-weight:500;opacity:.7">BETA 6.5</span></h1></header>
+<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>DOKKYO Mark Assistant <span style="font-size:11px;font-weight:500;opacity:.7">BETA 6.7</span></h1></header>
 <nav aria-label="作業モード"><button class="active" data-tab="setting">コース準備</button><button data-tab="map">設置</button><button data-tab="analysis">配置評価</button><button data-tab="race">レース運営</button><button data-tab="share">共有</button></nav>
 <main>
 <section id="setting" class="active">
@@ -667,7 +668,7 @@ function renderHistory(){
 // 8. リアルタイム位置・地図
 // ============================================================
 const SAGAMI_RACE_MAP_BOUNDS=[[35.2583333,139.475],[35.3000000,139.575]];
-const SAGAMI_RACE_MAP_IMAGE="assets/SAGAMI_RACE_MAP_IMAGE.jpg";
+const SAGAMI_RACE_MAP_IMAGE="./assets/SAGAMI_RACE_MAP_IMAGE.jpg";
 function ensureSagamiChartPane(map){
  if(!map)return;
  if(!map.getPane("sagamiChartPane")){
@@ -882,7 +883,7 @@ $("hakkeiAreaToggle").onchange=updateHakkeiArea;
 
 $("capture").onclick=()=>{let k=$("gpsMark").value;gps((f,e)=>{if(!f){$("gpsStatus").textContent=e;return}actual[k]=f;if(k===anchorTarget()){anchorKey=k;$("baseLat").value=f.lat.toFixed(6);$("baseLon").value=f.lon.toFixed(6);$("baseStatus").textContent=`${labels[k]||k}を配置原点として登録しました。`}$("gpsStatus").textContent=`${labels[k]||k}を登録。${f.lat.toFixed(6)}, ${f.lon.toFixed(6)} ／ 精度 ±${Math.round(f.accuracy)}m`;renderAll()})};
 $("clearGps").onclick=()=>{if(confirm("実測座標をすべて削除しますか？")){actual={};renderAll();$("gpsStatus").textContent="実測座標を削除しました。"}};
-document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll("main section").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab));renderAll();if(b.dataset.tab==="map"&&realMap)setTimeout(()=>{realMap.invalidateSize();updateSagamiOverlay();},120);if(b.dataset.tab==="race"){if(!raceComputed)raceCalculate();if(raceMap)setTimeout(()=>{raceMap.invalidateSize();updateRaceSagamiOverlay();},160)}});
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll("main section").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab));renderAll();if(b.dataset.tab==="map"&&realMap)setTimeout(()=>{realMap.invalidateSize();updateSagamiOverlay();},120);if(b.dataset.tab==="race"){if(!raceComputed)raceCalculate();if(raceMap)setTimeout(()=>{raceMap.invalidateSize({pan:false});updateRaceSagamiOverlay();if(raceSagamiOverlay)raceSagamiOverlay.setBounds(SAGAMI_RACE_MAP_BOUNDS);},220)}});
 let normalCalcTimer=null;
 function scheduleNormalRecalc(){clearTimeout(normalCalcTimer);normalCalcTimer=setTimeout(()=>{try{makePlan(true);}catch(e){$('mapStatus').textContent='コースを再計算できません：'+e.message;}},220);}
 ["wind","d14","startDist","finishDist","finishLine","tgGateWidth"].forEach(k=>{ $(k).addEventListener("input",scheduleNormalRecalc); $(k).addEventListener("change",scheduleNormalRecalc); });
@@ -1107,7 +1108,7 @@ function raceRender(){
   raceMap._raceProgrammaticView=true;raceMap.fitBounds(L.latLngBounds(all).pad(0.12),{maxZoom:17});raceMap._raceHasPlanView=true;
   setTimeout(()=>{if(raceMap)raceMap._raceProgrammaticView=false;},250);
  }
- updateRaceLiveReadings();updateRaceNav();setTimeout(()=>raceMap.invalidateSize(),80);
+ updateRaceLiveReadings();updateRaceNav();setTimeout(()=>raceMap.invalidateSize({pan:false}),180);
  $('raceStatus').textContent=`計画マーク ${entries.length}地点／GPS登録 ${Object.keys(raceActual).filter(k=>coords[k]).length}地点。フィニッシュライン ${data.config.finishLineLength.toFixed(1)}m（風上側：フィニッシュ船／風下側：フィニッシュピン）。`; 
 }
 $('racePoints').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.raceGps)raceRegisterGps(b.dataset.raceGps);if(b.dataset.raceRemove)raceRemoveGps(b.dataset.raceRemove)});
