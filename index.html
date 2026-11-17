@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#102b3f">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<title>DOKKYO MARK ASSISTANT BETA 5.1</title>
+<title>DOKKYO MARK ASSISTANT BETA 5.3</title>
 <style>
 :root{--navy:#102b3f;--blue:#1676a5;--bg:#f3f6f8;--ink:#17232d;--muted:#657784;--line:#d8e1e7;--green:#16845b;--red:#c34c45}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif}
@@ -51,7 +51,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 </style>
 </head>
 <body>
-<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>MARK ASSISTANT <span style="font-size:11px;font-weight:500;opacity:.7">BETA 5.1</span></h1></header>
+<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>MARK ASSISTANT <span style="font-size:11px;font-weight:500;opacity:.7">BETA 5.3</span></h1></header>
 <nav aria-label="作業モード"><button class="active" data-tab="setting">コース準備</button><button data-tab="map">設置</button><button data-tab="analysis">配置評価</button><button data-tab="race">レース運営</button></nav>
 <main>
 <section id="setting" class="active">
@@ -166,30 +166,33 @@ https://..."></textarea></div>
   <div class="race-grid">
    <div class="field"><label>マーク4 緯度（十進度）</label><input id="raceLat4" type="number" step="0.0000001" value="35.2897"></div>
    <div class="field"><label>マーク4 経度（十進度）</label><input id="raceLon4" type="number" step="0.0000001" value="139.5100"></div>
-   <div class="field"><label>コース風軸 w（°）</label><input id="raceWind" type="number" min="0" max="359" value="0"></div>
-   <div class="field"><label>1–4距離 d（m）</label><input id="raceD" type="number" min="1" value="1000"></div>
+   <div class="field"><label>コース風軸 w（°）</label><select id="raceWind"><option value="0">0°</option><option value="5">5°</option><option value="10">10°</option><option value="15">15°</option><option value="20">20°</option><option value="25">25°</option><option value="30">30°</option><option value="35">35°</option><option value="40">40°</option><option value="45">45°</option><option value="50">50°</option><option value="55">55°</option><option value="60">60°</option><option value="65">65°</option><option value="70">70°</option><option value="75">75°</option><option value="80">80°</option><option value="85">85°</option><option value="90">90°</option><option value="95">95°</option><option value="100">100°</option><option value="105">105°</option><option value="110">110°</option><option value="115">115°</option><option value="120">120°</option><option value="125">125°</option><option value="130">130°</option><option value="135">135°</option><option value="140">140°</option><option value="145">145°</option><option value="150">150°</option><option value="155">155°</option><option value="160">160°</option><option value="165">165°</option><option value="170">170°</option><option value="175">175°</option><option value="180">180°</option><option value="185">185°</option><option value="190">190°</option><option value="195">195°</option><option value="200">200°</option><option value="205">205°</option><option value="210">210°</option><option value="215">215°</option><option value="220">220°</option><option value="225">225°</option><option value="230">230°</option><option value="235">235°</option><option value="240">240°</option><option value="245">245°</option><option value="250">250°</option><option value="255">255°</option><option value="260">260°</option><option value="265">265°</option><option value="270">270°</option><option value="275">275°</option><option value="280">280°</option><option value="285">285°</option><option value="290">290°</option><option value="295">295°</option><option value="300">300°</option><option value="305">305°</option><option value="310">310°</option><option value="315">315°</option><option value="320">320°</option><option value="325">325°</option><option value="330">330°</option><option value="335">335°</option><option value="340">340°</option><option value="345">345°</option><option value="350">350°</option><option value="355">355°</option></select></div>
+   <div class="field"><label>1–4距離 d（m）</label>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:6px"><label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="radio" name="raceDMode" id="raceDModeSelect" value="select" checked style="width:auto">RAS対応値</label><label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="radio" name="raceDMode" id="raceDModeManual" value="manual" style="width:auto">手入力</label></div>
+    <select id="raceD"><option value="400">400m</option><option value="450">450m</option><option value="500">500m</option><option value="550">550m</option><option value="600">600m</option><option value="650">650m</option><option value="700">700m</option><option value="750">750m</option><option value="800">800m</option><option value="850">850m</option><option value="900">900m</option><option value="950">950m</option><option value="1000" selected>1000m</option><option value="1100">1100m</option><option value="1200">1200m</option><option value="1300">1300m</option><option value="1400">1400m</option><option value="1500">1500m</option><option value="1600">1600m</option><option value="1700">1700m</option><option value="1800">1800m</option><option value="1900">1900m</option><option value="2000">2000m</option><option value="2100">2100m</option><option value="2200">2200m</option><option value="2300">2300m</option><option value="2400">2400m</option><option value="2500">2500m</option><option value="2600">2600m</option><option value="2700">2700m</option><option value="2800">2800m</option><option value="2900">2900m</option><option value="3000">3000m</option></select><input id="raceDManual" type="number" min="1" step="0.1" value="1000" hidden>
+    <small class="note" id="raceDModeHint">RASの選択肢にある距離です。RAS共有リンクを作成できます。</small></div>
   </div>
   <div id="raceTrapFields">
    <div class="race-grid">
-    <div class="field"><label>比率 a（1–2 / 1–4）</label><input id="raceA" type="number" step="0.001" value="0.667"></div>
-    <div class="field"><label>比率 b（2–3 / 1–4）</label><input id="raceB" type="number" step="0.001" value="1"></div>
-    <div class="field"><label>角度 r412（°）</label><input id="raceR412" type="number" value="60"></div>
-    <div class="field"><label>角度 r123（°）</label><input id="raceR123" type="number" value="120"></div>
+    <div class="field"><label>比率 a（1–2 / 1–4）</label><select id="raceA"><option value="0.45">0.45</option><option value="0.5">0.5</option><option value="0.55">0.55</option><option value="0.6">0.6</option><option value="0.667" selected>0.667</option><option value="0.7">0.7</option><option value="0.75">0.75</option><option value="0.8">0.8</option><option value="0.9">0.9</option><option value="1.0">1.0</option><option value="1.1">1.1</option><option value="1.2">1.2</option><option value="1.3">1.3</option><option value="1.4">1.4</option><option value="1.5">1.5</option></select></div>
+    <div class="field"><label>比率 b（2–3 / 1–4）</label><select id="raceB"><option value="0.8">0.8</option><option value="0.85">0.85</option><option value="0.9">0.9</option><option value="0.95">0.95</option><option value="1.0" selected>1.0</option><option value="1.1">1.1</option><option value="1.2">1.2</option></select></div>
+    <div class="field"><label>角度 r412（°）</label><select id="raceR412"><option value="45">45°</option><option value="50">50°</option><option value="55">55°</option><option value="60" selected>60°</option><option value="65">65°</option><option value="70">70°</option><option value="75">75°</option><option value="80">80°</option><option value="85">85°</option><option value="90">90°</option></select></div>
+    <div class="field"><label>角度 r123（°）</label><select id="raceR123"><option value="135">135°</option><option value="130">130°</option><option value="125">125°</option><option value="120" selected>120°</option><option value="115">115°</option><option value="110">110°</option><option value="105">105°</option><option value="100">100°</option><option value="95">95°</option><option value="90">90°</option></select></div>
    </div>
   </div>
   <div class="race-grid">
-   <div class="field"><label>3–フィニッシュ距離 f（m）</label><input id="raceF" type="number" min="0" value="200"></div>
-   <div class="field"><label>角度 r23f（°）</label><input id="raceR23F" type="number" value="120"></div>
+   <div class="field"><label>3–フィニッシュ距離 f（m）</label><select id="raceF"><option value="100">100m</option><option value="150">150m</option><option value="200" selected>200m</option><option value="250">250m</option><option value="300">300m</option></select></div>
+   <div class="field"><label>角度 r23f（°）</label><select id="raceR23F"><option value="100">100°</option><option value="105">105°</option><option value="110">110°</option><option value="115">115°</option><option value="120" selected>120°</option><option value="125">125°</option><option value="130">130°</option></select></div>
    <div class="field"><label>フィニッシュライン長（m）</label><input id="raceFinishLineLength" type="number" min="1" value="20"></div>
-   <div class="field"><label>ゲート幅 gw（m）</label><input id="raceGW" type="number" min="0" value="50"></div>
-   <div class="field"><label>スタート風軸 ws（°）</label><input id="raceWS" type="number" min="0" max="359" value="0"></div>
+   <div class="field"><label>ゲート幅 gw（m）</label><select id="raceGW"><option value="40">40m</option><option value="45">45m</option><option value="50" selected>50m</option><option value="55">55m</option><option value="60">60m</option><option value="65">65m</option><option value="70">70m</option><option value="75">75m</option><option value="80">80m</option><option value="85">85m</option><option value="90">90m</option><option value="95">95m</option><option value="100">100m</option><option value="105">105m</option><option value="110">110m</option><option value="115">115m</option><option value="120">120m</option><option value="125">125m</option><option value="130">130m</option></select></div>
+   <div class="field"><label>スタート風軸 ws（°）</label><select id="raceWS"><option value="0">0°</option><option value="5">5°</option><option value="10">10°</option><option value="15">15°</option><option value="20">20°</option><option value="25">25°</option><option value="30">30°</option><option value="35">35°</option><option value="40">40°</option><option value="45">45°</option><option value="50">50°</option><option value="55">55°</option><option value="60">60°</option><option value="65">65°</option><option value="70">70°</option><option value="75">75°</option><option value="80">80°</option><option value="85">85°</option><option value="90">90°</option><option value="95">95°</option><option value="100">100°</option><option value="105">105°</option><option value="110">110°</option><option value="115">115°</option><option value="120">120°</option><option value="125">125°</option><option value="130">130°</option><option value="135">135°</option><option value="140">140°</option><option value="145">145°</option><option value="150">150°</option><option value="155">155°</option><option value="160">160°</option><option value="165">165°</option><option value="170">170°</option><option value="175">175°</option><option value="180">180°</option><option value="185">185°</option><option value="190">190°</option><option value="195">195°</option><option value="200">200°</option><option value="205">205°</option><option value="210">210°</option><option value="215">215°</option><option value="220">220°</option><option value="225">225°</option><option value="230">230°</option><option value="235">235°</option><option value="240">240°</option><option value="245">245°</option><option value="250">250°</option><option value="255">255°</option><option value="260">260°</option><option value="265">265°</option><option value="270">270°</option><option value="275">275°</option><option value="280">280°</option><option value="285">285°</option><option value="290">290°</option><option value="295">295°</option><option value="300">300°</option><option value="305">305°</option><option value="310">310°</option><option value="315">315°</option><option value="320">320°</option><option value="325">325°</option><option value="330">330°</option><option value="335">335°</option><option value="340">340°</option><option value="345">345°</option><option value="350">350°</option><option value="355">355°</option></select></div>
   </div>
   <h2 style="margin-top:14px">スタート設定（シグナルボート基準）</h2>
   <div class="race-grid">
    <div class="field"><label>シグナル艇 緯度</label><input id="raceSignalLat" type="number" step="0.0000001" value="35.2897"></div>
    <div class="field"><label>シグナル艇 経度</label><input id="raceSignalLon" type="number" step="0.0000001" value="139.5100"></div>
    <div class="field"><label>スタートライン長 s（m）</label><input id="raceStartLength" type="number" min="1" value="100"></div>
-   <div class="field"><label>ライン中心–4距離 d4（m）</label><input id="raceStartD4" type="number" min="0" value="150"></div>
+   <div class="field"><label>ライン中心–4距離 d4（m）</label><select id="raceStartD4"><option value="50">50m</option><option value="100">100m</option><option value="150" selected>150m</option><option value="200">200m</option><option value="250">250m</option><option value="300">300m</option></select></div>
   </div>
   <div class="field" style="margin:10px 0"><label><input id="raceUseStartGeometry" type="checkbox" checked> スタート設定から算出した4マークを基準にする（風軸・シグナル艇・距離の変更に追従）</label></div>
   <div id="raceConsistency" class="status" style="margin-bottom:8px">4マーク座標の整合性：未計算</div>
@@ -210,7 +213,7 @@ https://..."></textarea></div>
  <div class="race-warn">注意：これはRASの計算式を参考にした試作機能です。RASとの座標照合・実海面での検証が必要です。安全上重要な設置判断には、必ず公式情報・現場確認・複数人での照合を行ってください。</div>
 </section>
 
-<div class="footer">DOKKYO MARK ASSISTANT · BETA 5.1<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
+<div class="footer">DOKKYO MARK ASSISTANT · BETA 5.3<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
@@ -859,7 +862,7 @@ function raceMagDecl(lat,lon){return 8.2637+0.3077*(lat-37)-0.1288*(lon-138)-0.0
 function raceRadii(lat,lon){const ww=Math.sqrt(1-RACE_E2*Math.sin(rad(lat))**2);return {mm:RACE_RX*(1-RACE_E2)/Math.pow(ww,3),nn:RACE_RX/ww,ni:Math.cos(rad(lat))*RACE_RX/ww,dd:raceMagDecl(lat,lon)}}
 function raceStep(p,dist,bearing,r){return {lat:p.lat+deg(dist*Math.cos(rad(bearing-r.dd))/r.mm),lon:p.lon+deg(dist*Math.sin(rad(bearing-r.dd))/r.ni)}}
 function raceInverse(a,b,r){const dy=rad(b.lat-a.lat)*r.mm,dx=rad(b.lon-a.lon)*r.nn*Math.cos(rad(a.lat));return {distance:Math.hypot(dx,dy),bearing:norm(deg(Math.atan2(dx,dy))+raceMagDecl(a.lat,a.lon))}}
-function raceInput(){const n=id=>Number($(id).value);return {type:$('raceCourse').value,lat4:n('raceLat4'),lon4:n('raceLon4'),w:n('raceWind'),d:n('raceD'),a:n('raceA'),b:n('raceB'),r412:n('raceR412'),r123:n('raceR123'),f:n('raceF'),r23f:n('raceR23F'),finishLineLength:n('raceFinishLineLength'),gw:n('raceGW'),ws:n('raceWS'),useStartGeometry:$('raceUseStartGeometry').checked,signal:{lat:n('raceSignalLat'),lon:n('raceSignalLon')},s:n('raceStartLength'),d4:n('raceStartD4')}}
+function raceInput(){const n=id=>Number($(id).value);return {type:$('raceCourse').value,lat4:n('raceLat4'),lon4:n('raceLon4'),w:n('raceWind'),d:($('raceDModeManual').checked?n('raceDManual'):n('raceD')),a:n('raceA'),b:n('raceB'),r412:n('raceR412'),r123:n('raceR123'),f:n('raceF'),r23f:n('raceR23F'),finishLineLength:n('raceFinishLineLength'),gw:n('raceGW'),ws:n('raceWS'),useStartGeometry:$('raceUseStartGeometry').checked,signal:{lat:n('raceSignalLat'),lon:n('raceSignalLon')},s:n('raceStartLength'),d4:n('raceStartD4')}}
 function raceValidate(c){const finite=['lat4','lon4','w','d','f','r23f','finishLineLength','gw','ws','s','d4'];for(const k of finite)if(!Number.isFinite(c[k]))throw Error('入力値を数値で確認してください：'+k);if(c.lat4<-90||c.lat4>90||c.lon4<-180||c.lon4>180||c.signal.lat<-90||c.signal.lat>90||c.signal.lon<-180||c.signal.lon>180)throw Error('緯度・経度の範囲を確認してください。');if(c.d<=0||c.s<=0||c.finishLineLength<=0||c.gw<0||c.f<0||c.d4<0)throw Error('距離は0以上（1–4距離・スタートライン長は1以上）で入力してください。');if(c.type==='trapezoid'&&(!Number.isFinite(c.a)||!Number.isFinite(c.b)||!Number.isFinite(c.r412)||!Number.isFinite(c.r123)))throw Error('トラペゾイドの比率・角度を確認してください。');}
 function raceCalc(){
  const c=raceInput();raceValidate(c);const sig=JSON.stringify(c);raceActualConfigSignature=sig;raceSaveGps();const courseBase={lat:c.lat4,lon:c.lon4},w=norm(c.w),ws=norm(c.ws);
@@ -1030,8 +1033,20 @@ function rasBuildUrl(params){
  if(params.key!==undefined&&params.key!==null&&params.key!=='')u.searchParams.set('key',String(params.key));
  return u.toString();
 }
+function raceDModeUpdate(){
+ const manual=$('raceDModeManual').checked;
+ $('raceD').hidden=manual;$('raceDManual').hidden=!manual;
+ $('raceDModeHint').textContent=manual?'手入力値はDMA内でのみ使用します。RAS共有リンクは安全のためロックされます。':'RASの選択肢にある距離です。RAS共有リンクを作成できます。';
+ $('rasExport').disabled=manual;
+ $('rasExportStatus').textContent=manual?'1–4距離が手入力モードです。RAS共有リンクは作成できません。':'コースを計算してから共有リンクを作成してください。';
+}
+$('raceDModeSelect').addEventListener('change',raceDModeUpdate);
+$('raceDModeManual').addEventListener('change',raceDModeUpdate);
+$('raceD').addEventListener('change',()=>{$('raceDManual').value=$('raceD').value;});
+raceDModeUpdate();
 function rasCreateShare(){
  try{
+  if($('raceDModeManual').checked)throw Error('1–4距離が手入力モードのため、RAS共有リンクを作成できません。RAS対応値を選択してください。');
   const c=raceInput();raceValidate(c);
   if(c.type==='trapezoid'&&(!(c.a>0)||!(c.b>0)||!(c.r412>0)||!(c.r123>0)))throw Error('トラペゾイドの比率・内角を確認してください。');
   const computed=raceCalc();raceRender();
