@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#102b3f">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<title>DOKKYO MARK ASSISTANT BETA 4.9</title>
+<title>DOKKYO MARK ASSISTANT BETA 5.0</title>
 <style>
 :root{--navy:#102b3f;--blue:#1676a5;--bg:#f3f6f8;--ink:#17232d;--muted:#657784;--line:#d8e1e7;--green:#16845b;--red:#c34c45}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif}
@@ -51,7 +51,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 </style>
 </head>
 <body>
-<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>MARK ASSISTANT <span style="font-size:11px;font-weight:500;opacity:.7">BETA 4.9</span></h1></header>
+<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>MARK ASSISTANT <span style="font-size:11px;font-weight:500;opacity:.7">BETA 5.0</span></h1></header>
 <nav aria-label="作業モード"><button class="active" data-tab="setting">コース準備</button><button data-tab="map">設置</button><button data-tab="analysis">配置評価</button><button data-tab="race">レース運営</button></nav>
 <main>
 <section id="setting" class="active">
@@ -151,9 +151,9 @@ https://..."></textarea></div>
  </div>
  <div class="card">
   <h2>DMAからRASへ共有</h2>
-  <p class="note">現在のレース運営パラメータを、RASで読み込める共有リンクに変換します。RAS標準のコース共有URLを1つ作成します。スタート側の補助パラメータもURLに含め、DMAへ戻す際にも利用できます。</p>
+  <p class="note">コース用リンクとスタート用リンクを別々に作成します。RASの各画面で必要なパラメータだけを渡します。</p>
   <button class="primary full" id="rasExport">RAS共有リンクを作成</button>
-  <div class="field" style="margin-top:10px"><label for="rasExportMessage">共有メッセージ</label><textarea id="rasExportMessage" rows="7" readonly placeholder="「RAS共有リンクを作成」を押すと、ここにリンクが表示されます。"></textarea></div>
+  <div class="field" style="margin-top:10px"><label for="rasExportMessage">共有メッセージ（コース用・スタート用）</label><textarea id="rasExportMessage" rows="10" readonly placeholder="「RAS共有リンクを作成」を押すと、2種類のリンクが表示されます。"></textarea></div>
   <button class="secondary full" id="rasExportCopy" disabled>共有メッセージをコピー</button>
   <div class="status" id="rasExportStatus">コースを計算してから共有リンクを作成してください。</div>
  </div>
@@ -210,7 +210,7 @@ https://..."></textarea></div>
  <div class="race-warn">注意：これはRASの計算式を参考にした試作機能です。RASとの座標照合・実海面での検証が必要です。安全上重要な設置判断には、必ず公式情報・現場確認・複数人での照合を行ってください。</div>
 </section>
 
-<div class="footer">DOKKYO MARK ASSISTANT · BETA 4.9<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
+<div class="footer">DOKKYO MARK ASSISTANT · BETA 5.0<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
@@ -1027,29 +1027,52 @@ function rasBuildUrl(params){
 function rasCreateShare(){
  try{
   const c=raceInput();raceValidate(c);
+  if(c.type==='trapezoid'&&(!(c.a>0)||!(c.b>0)||!(c.r412>0)||!(c.r123>0)))throw Error('トラペゾイドの比率・内角を確認してください。');
   const computed=raceCalc();raceRender();
-  // Use the exact active mark-4 center shown by DMA, not an alternate candidate center.
+  // RAS trapezoid-m accepts b as the 2-3 / 1-4 ratio, not an absolute distance.
+  // RAS internally calculates L23 = b * d. Keep the ratio in the URL and state
+  // the resulting distance explicitly in the share text for an easy cross-check.
   const base=computed.points['4'];
   const la=rasDmmParts(base.lat),lo=rasDmmParts(base.lon);
-  const common={id:la.d,im:la.m,kd:lo.d,km:lo.m,w:c.w,d:c.d,f:c.f,r23f:c.r23f,gw:c.gw};
-  let courseParams={...common,ws:c.ws,s:c.s,d4:c.d4,icd:rasDmmParts(c.signal.lat).d,icm:rasDmmParts(c.signal.lat).m,kcd:rasDmmParts(c.signal.lon).d,kcm:rasDmmParts(c.signal.lon).m,course:c.type==='trapezoid'?'trapezoid-m':c.type+'-m',key:'kpsf'};
-  if(c.type==='trapezoid')Object.assign(courseParams,{a:c.a,b:c.b,r412:c.r412,r123:c.r123});
-  // RAS's standard share URL uses one course-specific link. Additional
-  // start-side parameters are carried alongside it; RAS ignores unknown extras,
-  // while DMA can restore them on re-import.
   const sigLa=rasDmmParts(c.signal.lat),sigLo=rasDmmParts(c.signal.lon);
+  const common={id:la.d,im:la.m,kd:lo.d,km:lo.m,w:c.w,d:c.d,f:c.f,r23f:c.r23f,gw:c.gw};
+  const courseParams={...common,course:c.type==='trapezoid'?'trapezoid-m':c.type+'-m',key:'kpsf'};
+  if(c.type==='trapezoid'){
+   Object.assign(courseParams,{a:c.a,b:c.b,r412:c.r412,r123:c.r123});
+  }
   const courseUrl=rasBuildUrl(courseParams);
-  const message=[
-   '【DMA → RAS 共有データ】',
+  // RAS start page (etcetera-m) requires signal-boat coordinates and start geometry.
+  const startParams={
+   icd:sigLa.d,icm:sigLa.m,kcd:sigLo.d,kcm:sigLo.m,
+   ws:c.ws,s:c.s,d4:c.d4,gw:c.gw,
+   course:'etcetera-m',key:'kpsf'
+  };
+  const startUrl=rasBuildUrl(startParams);
+  const details=[
    `コース形式：${c.type==='trapezoid'?'トラペゾイド':c.type.toUpperCase()}`,
    `マーク4：N${la.d}°${la.m}′ E${lo.d}°${lo.m}′`,
-   `シグナルボート：N${sigLa.d}°${sigLa.m}′ E${sigLo.d}°${sigLo.m}′`,
-   '',
-   (c.type==='trapezoid'?'トラペゾイド（ｍ）用：':c.type.toUpperCase()+'（ｍ）用：'),courseUrl
+   `シグナルボート：N${sigLa.d}°${sigLa.m}′ E${sigLo.d}°${sigLo.m}′`
+  ];
+  if(c.type==='trapezoid'){
+   details.push(`1–4距離：${c.d.toFixed(1)}m`);
+   details.push(`2–3距離：${(c.b*c.d).toFixed(1)}m（RAS送信値 b=${c.b}、比率）`);
+   details.push(`1–2距離：${(c.a*c.d).toFixed(1)}m（RAS送信値 a=${c.a}、比率）`);
+   details.push(`1–2–3内角 r123：${c.r123}°`);
+   details.push(`4–1–2内角 r412：${c.r412}°`);
+  }
+  const message=[
+   '【DMA → RAS 共有データ】',...details,'',
+   '■ コース用リンク',courseUrl,'',
+   '■ スタート用リンク',startUrl
   ].join('\n');
+  // Guard against regressions: confirm the required RAS query keys are present.
+  const courseCheck=new URL(courseUrl).searchParams;
+  if(c.type==='trapezoid'&&(!courseCheck.has('b')||!courseCheck.has('r123')))throw Error('コース用リンクに2–3比率またはr123が含まれていません。');
+  const startCheck=new URL(startUrl).searchParams;
+  for(const key of ['icd','icm','kcd','kcm','ws','s','d4','course'])if(!startCheck.has(key))throw Error('スタート用リンクの必須項目が不足しています：'+key);
   $('rasExportMessage').value=message;
   $('rasExportCopy').disabled=false;
-  $('rasExportStatus').textContent='RAS形式の共有リンクを作成しました。メッセージをコピーしてLINE等で共有できます。RAS側で読み込んだ後、入力値と地図を必ず照合してください。';
+  $('rasExportStatus').textContent='コース用・スタート用の2つのRAS共有リンクを作成しました。トラペゾイドでは2–3距離（b×1–4距離）とr123内角もメッセージに明記しています。RAS側で開き、値と地図を照合してください。';
  }catch(e){$('rasExportStatus').textContent='リンクを作成できません：'+e.message;}
 }
 $('rasExport').addEventListener('click',rasCreateShare);
