@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#102b3f">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<title>DOKKYO MARK ASSISTANT BETA 5.0</title>
+<title>DOKKYO MARK ASSISTANT BETA 5.1</title>
 <style>
 :root{--navy:#102b3f;--blue:#1676a5;--bg:#f3f6f8;--ink:#17232d;--muted:#657784;--line:#d8e1e7;--green:#16845b;--red:#c34c45}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif}
@@ -51,7 +51,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 </style>
 </head>
 <body>
-<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>MARK ASSISTANT <span style="font-size:11px;font-weight:500;opacity:.7">BETA 5.0</span></h1></header>
+<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>MARK ASSISTANT <span style="font-size:11px;font-weight:500;opacity:.7">BETA 5.1</span></h1></header>
 <nav aria-label="作業モード"><button class="active" data-tab="setting">コース準備</button><button data-tab="map">設置</button><button data-tab="analysis">配置評価</button><button data-tab="race">レース運営</button></nav>
 <main>
 <section id="setting" class="active">
@@ -210,7 +210,7 @@ https://..."></textarea></div>
  <div class="race-warn">注意：これはRASの計算式を参考にした試作機能です。RASとの座標照合・実海面での検証が必要です。安全上重要な設置判断には、必ず公式情報・現場確認・複数人での照合を行ってください。</div>
 </section>
 
-<div class="footer">DOKKYO MARK ASSISTANT · BETA 5.0<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
+<div class="footer">DOKKYO MARK ASSISTANT · BETA 5.1<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
@@ -1021,7 +1021,13 @@ function rasDmmParts(value){
 }
 function rasBuildUrl(params){
  const u=new URL('https://secure.kurozemi.net/mlt/');
- for(const [k,v] of Object.entries(params)) if(v!==undefined&&v!==null&&v!=='')u.searchParams.set(k,String(v));
+ // RAS共有URLは識別キーを常に末尾へ置く。
+ // パラメータオブジェクト内でkeyがどこに定義されていても順序を固定する。
+ for(const [k,v] of Object.entries(params)){
+  if(k==='key'||v===undefined||v===null||v==='')continue;
+  u.searchParams.set(k,String(v));
+ }
+ if(params.key!==undefined&&params.key!==null&&params.key!=='')u.searchParams.set('key',String(params.key));
  return u.toString();
 }
 function rasCreateShare(){
@@ -1038,7 +1044,7 @@ function rasCreateShare(){
   const common={id:la.d,im:la.m,kd:lo.d,km:lo.m,w:c.w,d:c.d,f:c.f,r23f:c.r23f,gw:c.gw};
   const courseParams={...common,course:c.type==='trapezoid'?'trapezoid-m':c.type+'-m',key:'kpsf'};
   if(c.type==='trapezoid'){
-   Object.assign(courseParams,{a:c.a,b:c.b,r412:c.r412,r123:c.r123});
+   Object.assign(courseParams,{a:c.a,b:(c.b===1?'1.0':String(c.b)),r412:c.r412,r123:c.r123});
   }
   const courseUrl=rasBuildUrl(courseParams);
   // RAS start page (etcetera-m) requires signal-boat coordinates and start geometry.
@@ -1055,7 +1061,7 @@ function rasCreateShare(){
   ];
   if(c.type==='trapezoid'){
    details.push(`1–4距離：${c.d.toFixed(1)}m`);
-   details.push(`2–3距離：${(c.b*c.d).toFixed(1)}m（RAS送信値 b=${c.b}、比率）`);
+   details.push(`2–3距離：${(c.b*c.d).toFixed(1)}m（RAS送信値 b=${c.b===1?'1.0':c.b}、比率）`);
    details.push(`1–2距離：${(c.a*c.d).toFixed(1)}m（RAS送信値 a=${c.a}、比率）`);
    details.push(`1–2–3内角 r123：${c.r123}°`);
    details.push(`4–1–2内角 r412：${c.r412}°`);
