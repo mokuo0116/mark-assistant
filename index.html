@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<title>DOKKYO Mark Assistant BETA 6.8</title>
+<title>DOKKYO Mark Assistant BETA 6.9</title>
 <style>
 :root{--navy:#002D8C;--blue:#002D8C;--bg:#ffffff;--ink:#17232d;--muted:#657784;--line:#d8e1e7;--green:#16845b;--red:#c34c45}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif}
@@ -61,7 +61,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" content="#0D477D">
 <style>
-/* BETA 6.8: isolate Leaflet layers inside their own map viewport */
+/* BETA 6.9: isolate Leaflet layers inside their own map viewport */
 #realMap, #raceMap.race-map {
   position: relative !important;
   isolation: isolate;
@@ -89,7 +89,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 
 </head>
 <body>
-<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>DOKKYO Mark Assistant <span style="font-size:11px;font-weight:500;opacity:.7">BETA 6.8</span></h1></header>
+<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>DOKKYO Mark Assistant <span style="font-size:11px;font-weight:500;opacity:.7">BETA 6.9</span></h1></header>
 <nav aria-label="作業モード"><button class="active" data-tab="setting">コース準備</button><button data-tab="map">設置</button><button data-tab="analysis">配置評価</button><button data-tab="race">レース運営</button><button data-tab="share">共有</button></nav>
 <main>
 <section id="setting" class="active">
@@ -1300,4 +1300,14 @@ $('rasImport').addEventListener('click',rasImportMessage);
 startLiveGps();
 startRaceLiveGps();
 </script>
+
+<script>
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js', {scope: './'})
+      .catch((error) => console.warn('DMA service worker registration failed:', error));
+  });
+}
+</script>
+
 </body></html>

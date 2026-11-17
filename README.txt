@@ -1,21 +1,28 @@
-DOKKYO Mark Assistant BETA 6.6
+DOKKYO Mark Assistant BETA 6.9
 ================================
 
-構成
-- index.html : アプリ本体
-- assets/SAGAMI_RACE_MAP_IMAGE.jpg : 相模湾レース海面図
-- assets/app-icon-512.png : アプリアイコン原版（512px）
-- assets/app-icon-192.png : 192pxアイコン
-- assets/apple-touch-icon.png : iOS用アイコン（180px）
-- assets/favicon-48.png : ブラウザ用アイコン（48px）
+BETA 6.9
+- GitHub Pages / HTTPS向けにService Workerを追加
+- Chrome AndroidのWebアプリ判定に必要なfetchイベントハンドラーを登録
+- ホーム画面用アイコン候補を安全領域付き画像に統一
+- Manifestに安定したidを追加
 
-使い方
-1. このフォルダ構成を維持したまま展開してください。
-2. index.html をブラウザで開いてください。
-3. assets フォルダを移動・改名・削除しないでください。
+GitHub Pagesへの配置
+- index.html
+- manifest.webmanifest
+- sw.js
+- assets/ フォルダ
+上記を同じ公開ディレクトリに配置してください。
+
+更新後の手順
+1. GitHub PagesへBETA 6.9一式をアップロード・公開
+2. ChromeでDMAのページを開き、再読み込み
+3. 既存のホーム画面ショートカットを削除
+4. Chromeのメニューから「ホーム画面に追加」を実行
+5. アイコンが更新されるか確認
 
 注意
-- 相模湾レース海面図とアイコンはHTML本体から分離されています。
-- 地図表示にはインターネット接続と外部地図/CDNへのアクセスが必要です。
-- 設定・履歴はブラウザの localStorage に保存されるため、HTMLファイルだけではバックアップされません。
-- この版はファイル構成の整理版です。海上でのGPS精度・通信環境・実運用の確認は別途必要です。
+- Service Workerはfetchを横取りせず、キャッシュもしません。通常のネットワーク読み込みを維持します。
+- 既存のショートカットは古いアイコンを保持する場合があるため、削除して再追加してください。
+- GitHub Pagesのリポジトリ配下パスでも動くよう、登録・Manifest・アイコン参照は相対パスです。
+- 実機Chromeの最終判定・アイコン更新は端末で確認してください。
