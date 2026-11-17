@@ -113,7 +113,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
     <div class="field" id="finishDistField"><label>4-フィニッシュ基準距離（m）</label><input id="finishDist" type="number" min="1" value="200"></div>
     <div class="field" id="finishLineField"><label>フィニッシュライン長（m）</label><input id="finishLine" type="number" min="1" value="50"></div><div class="field" id="tgGateField" hidden><label>下ゲート幅（4S–4P・m）</label><input id="tgGateWidth" type="number" min="1" value="100"></div>
    </div>
-   <p class="note">B・BFコースでは基準マークを選択できます。TGコースは1マークを配置原点とし、4S–4Pの中点を仮想4マークとして扱います。4S–4Pゲートをスタート兼フィニッシュに使用します。</p>
+   <p class="note">B・BFコースでは基準マークを選択できます。TGコースは4Pマークを配置原点とし、4S–4Pの中点を仮想4マークとして扱います。4S–4Pゲートをスタート兼フィニッシュに使用します。</p>
    <details class="help"><summary>B・BFコースの配置ルール</summary><p class="note">選択した基準マーク（4Pまたは1マーク）の実測位置を基準にコースを配置します。4S・4Pは左右対称です。ラインなしでは4Sから風軸+120°、4Pから風軸−160°に引いた半直線の交点をレスキュー艇の待機位置とします。フィニッシュ距離・ライン長はラインありの場合のみ設定します。</p></details>
    <div id="tgHelp" class="status" hidden>TGコース航路：スタートゲート → 1 → 4ゲート → 1 → 2（サイド） → 4ゲート（フィニッシュ）。4は4S・4Pの中点で、物理マークではありません。</div>
   </div>
@@ -307,6 +307,9 @@ function v(b,d){return {x:Math.sin(rad(b))*d,y:Math.cos(rad(b))*d}}
 function plus(a,b){return{x:a.x+b.x,y:a.y+b.y}}
 function makePlan(showCourse=true){
  courseGenerated=!!showCourse;
+ // A deliberate course recalculation or history restore should refit the full course,
+ // even if the user previously dragged the map or used the current-location button.
+ if(realMap){realMap._hasCourseView=false;realMap._userMovedView=false;}
  // Rebuild all course-specific construction state on every course change.
  // M exists only for the practice course with a separate finish line.
  finishMidpointPlan=null;
@@ -410,6 +413,7 @@ function inverse(a,b){
 }
 function anchorTarget(){
  const c=settings().course;
+ if(c==="tg")return "4P";
  if(c==="practice"||c==="practiceLine")return $("practiceAnchor")?.value||"4P";
  return "1";
 }
@@ -782,7 +786,10 @@ function updateNav(){
  // planned is rebuilt by makePlan() even when the user is editing inputs.
  // A stale courseGenerated flag must not suppress navigation for valid plan points.
  const items=planned && Object.keys(planned).length ? planned : {};
- navUpdate("",items,livePosition,realMap,navSelected,v=>{navSelected=v;},k=>planGeo(k),(a,b)=>inverse(a,b));
+ const navItems=settings().course==="tg"
+   ? Object.fromEntries(Object.entries(items).filter(([k])=>k!=="4"))
+   : items;
+ navUpdate("",navItems,livePosition,realMap,navSelected,v=>{navSelected=v;},k=>planGeo(k),(a,b)=>inverse(a,b));
 }
 function stopLiveGps(){
  if(liveWatchId!==null){navigator.geolocation.clearWatch(liveWatchId);liveWatchId=null;}
@@ -953,7 +960,7 @@ initializeApp();
 // 10. マークレイヤー互換レース運営モード（試作）
 // ============================================================
 $("navTarget").addEventListener("change",e=>{navSelected=e.target.value;updateNav();const o=origin();navFocus("nav",realMap,navSelected,k=>o&&planned[k]?geo(o,planned[k]):null);});
-$("navNext").addEventListener("click",()=>{const keys=Object.keys(planned).filter(k=>k!=="R");if(!keys.length)return;navSelected=keys[(keys.indexOf(navSelected)+1+keys.length)%keys.length];updateNav();const o=origin();navFocus("nav",realMap,navSelected,k=>o&&planned[k]?geo(o,planned[k]):null);});
+$("navNext").addEventListener("click",()=>{const keys=Object.keys(planned).filter(k=>k!=="R"&&!(settings().course==="tg"&&k==="4"));if(!keys.length)return;navSelected=keys[(keys.indexOf(navSelected)+1+keys.length)%keys.length];updateNav();const o=origin();navFocus("nav",realMap,navSelected,k=>o&&planned[k]?geo(o,planned[k]):null);});
 
 let raceMap=null, raceLayer=null, raceComputed=null, raceActual={}, raceActualConfigSignature=null, raceFinishLengthTouched=false;
 let raceLiveWatchId=null,raceLivePosition=null,raceLiveMarker=null,raceSagamiOverlay=null,raceHakkeiAreaLayer=null;
@@ -968,11 +975,19 @@ function raceInverse(a,b,r){const dy=rad(b.lat-a.lat)*r.mm,dx=rad(b.lon-a.lon)*r
 function raceShareSnapshot(){
  const ids=['raceCourse','raceLat4','raceLon4','raceWind','raceDModeSelect','raceDModeManual','raceD','raceDManual','raceA','raceB','raceR412','raceR123','raceF','raceR23F','raceFinishLineLength','raceGW','raceWS','raceSignalLat','raceSignalLon','raceStartLength','raceStartD4','raceUseStartGeometry'];
  const values={};ids.forEach(id=>{const el=$(id);if(!el)return;values[id]=(el.type==='checkbox'||el.type==='radio')?el.checked:el.value;});
- return {version:1,values,actual:raceActual||{},savedAt:new Date().toISOString()};
+ return {version:1,values,actual:raceActual||{},raceFinishLengthTouched:!!raceFinishLengthTouched,savedAt:new Date().toISOString()};
 }
 function applyRaceShareSnapshot(data){
  if(!data||data.version!==1||!data.values)throw new Error('レース共有データの形式が正しくありません。');
  Object.entries(data.values).forEach(([id,value])=>{const el=$(id);if(!el)return;if(el.type==='checkbox'||el.type==='radio')el.checked=!!value;else el.value=String(value);});
+ // Preserve whether the sender explicitly customized the finish line.
+ // Legacy snapshots lack the flag, so infer it from the old default s/5 rule.
+ if(typeof data.raceFinishLengthTouched==='boolean'){
+  raceFinishLengthTouched=data.raceFinishLengthTouched;
+ }else{
+  const start=Number($('raceStartLength').value),finish=Number($('raceFinishLineLength').value);
+  raceFinishLengthTouched=Number.isFinite(start)&&start>0&&Number.isFinite(finish)&&Math.abs(finish-start/5)>0.05;
+ }
  raceActual=data.actual||{};
  raceCalculate();
 }
