@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#002D8C">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<title>DOKKYO Mark Assistant BETA 5.5</title>
+<title>DOKKYO Mark Assistant BETA 5.6</title>
 <style>
 :root{--navy:#002D8C;--blue:#002D8C;--bg:#ffffff;--ink:#17232d;--muted:#657784;--line:#d8e1e7;--green:#16845b;--red:#c34c45}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif}
@@ -52,7 +52,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 </style>
 </head>
 <body>
-<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>DOKKYO Mark Assistant <span style="font-size:11px;font-weight:500;opacity:.7">BETA 5.5</span></h1></header>
+<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>DOKKYO Mark Assistant <span style="font-size:11px;font-weight:500;opacity:.7">BETA 5.6</span></h1></header>
 <nav aria-label="作業モード"><button class="active" data-tab="setting">コース準備</button><button data-tab="map">設置</button><button data-tab="analysis">配置評価</button><button data-tab="race">レース運営</button></nav>
 <main>
 <section id="setting" class="active">
@@ -160,7 +160,7 @@ https://..."></textarea></div>
  </div>
  <div class="card">
   <h2>レース運営モード</h2>
-  <p class="note">マークレイヤーの共有設定をもとに実際に設置する計画マークを地図へ展開し、各マークの実測位置をGPS登録します。仮想基準点（4S′・4P′など）は表示しません。通常の練習コース設定とは独立しています。</p>
+  
   <div class="field"><label>コース形式</label><select id="raceCourse"><option value="trapezoid">トラペゾイド</option><option value="lr">LR</option><option value="lg">LG</option></select></div>
   <details class="help" id="raceAdvancedSettings"><summary>詳細設定（コース・スタートパラメータ）</summary>
   <h2 style="margin-top:14px">コース設定（マーク4基準）</h2>
@@ -192,6 +192,7 @@ https://..."></textarea></div>
   <div class="race-grid">
    <div class="field"><label>シグナル艇 緯度</label><input id="raceSignalLat" type="number" step="0.0000001" value="35.2897"></div>
    <div class="field"><label>シグナル艇 経度</label><input id="raceSignalLon" type="number" step="0.0000001" value="139.5100"></div>
+   <div class="field"><button class="secondary full" id="raceSetReference">現在地をシグナルボート位置に設定</button><div class="status" id="raceReferenceStatus" style="margin-top:6px">GPS現在地をシグナルボート座標に反映します。</div></div>
    <div class="field"><label>スタートライン長 s（m）</label><input id="raceStartLength" type="number" min="1" value="100"></div>
    <div class="field"><label>ライン中心–4距離 d4（m）</label><select id="raceStartD4"><option value="50">50m</option><option value="100">100m</option><option value="150" selected>150m</option><option value="200">200m</option><option value="250">250m</option><option value="300">300m</option></select></div>
   </div>
@@ -200,21 +201,21 @@ https://..."></textarea></div>
   <button class="secondary full" id="raceUseStart4" style="margin-bottom:8px">スタート計算の4マーク座標をコース基準に反映</button>
   </details>
 <button class="primary full" id="raceCalculate">コースを計算・地図に表示</button>
-  <div class="status" id="raceStatus">初期値はサンプルです。実際の設置前に入力値と座標を確認してください。</div>
+  <div class="status" id="raceStatus"></div>
  </div>
- <div class="card"><h2>レース海面図</h2><p class="note">青＝マークレイヤー計画位置／黄＝GPS実測位置／紫＝レスキュー艇の現在地。地図表示には通信が必要です。</p><div id="raceMap" class="race-map"></div>
-  <details class="help" style="margin-top:8px"><summary>帆走海面表示の設定</summary><div class="field" style="margin-top:12px"><label style="display:flex;align-items:center;gap:8px;color:var(--ink);font-size:13px"><input id="raceSagamiOverlayToggle" type="checkbox" checked style="width:auto;transform:scale(1.15)">相模湾レース海面図（2024）を重ねて表示</label><small class="note">位置合わせは概算です。</small></div>
+ <div class="card"><h2>レース海面図</h2><div id="raceMap" class="race-map"></div>
+  <details class="help" style="margin-top:8px"><summary>帆走海面表示の設定</summary><div class="field" style="margin-top:12px"><label style="display:flex;align-items:center;gap:8px;color:var(--ink);font-size:13px"><input id="raceSagamiOverlayToggle" type="checkbox" checked style="width:auto;transform:scale(1.15)">相模湾レース海面図（2024）を重ねて表示</label><small class="note"></small></div>
   <div class="field" style="margin-top:8px"><label style="display:flex;align-items:center;gap:8px;color:var(--ink);font-size:13px"><input id="raceHakkeiAreaToggle" type="checkbox" checked style="width:auto;transform:scale(1.15)">八景島マリーナ帆走区域（概算）を表示</label><small class="note">公式境界ではありません。</small></div></details>
-  <button class="primary full" id="raceLiveGps" style="margin-top:10px">リアルタイム現在地を表示</button><div class="status" id="raceLiveStatus">現在地の追跡は停止中です。</div><button class="secondary full" id="raceSetReference" style="margin-top:8px">現在地をシグナルボート位置に設定</button><div class="status" id="raceReferenceStatus">現在地を取得して、シグナルボートの基準座標に設定します。</div>
-  <div id="raceLiveReadings" class="note" style="margin-top:8px">現在地を取得すると、計画マークまでの距離・方位を表示します。</div>
+  <button class="primary full" id="raceLiveGps" style="margin-top:10px">リアルタイム現在地を表示</button><div class="status" id="raceLiveStatus">現在地の追跡は停止中です。</div>
+  
   <div class="status" id="raceNavPanel" style="margin-top:12px"><strong>マーク誘導</strong><div class="race-grid" style="margin-top:8px"><div class="field"><label>誘導先マーク</label><select id="raceNavTarget"></select></div><div class="field" style="display:flex;align-items:end"><button class="secondary full" id="raceNavNext">次のマークへ</button></div></div><div id="raceNavReadout" style="font-size:18px;font-weight:800;margin-top:8px">コース計算待ち</div><small id="raceNavHint">誘導先を選択すると地図上で位置を確認できます。</small></div>
-  <p class="note">マークをタップすると座標を確認できます。地図は計画範囲に自動ズームします。帆走区域・重ね合わせ画像は参考表示であり、海図や航行安全情報の代わりにはなりません。</p></div>
+  <div class="card"><h2>計算されたマーク座標</h2><div id="racePoints" class="race-results"><p class="note">コース計算後に座標を表示します。</p></div></div>
+  <p class="note">マークをタップすると座標を確認できます。</p></div>
  <div class="card"><h2>計画位置と実測位置の誤差</h2><p class="note">青＝マークレイヤー計画位置、黄＝GPS実測位置。破線は計画位置と実測位置のずれを示します。距離・方位は実測位置から計画位置への修正方向です。</p><div id="raceErrorSummary" class="status">マークレイヤー計画を計算し、マークをGPS登録すると誤差を表示します。</div><div id="raceErrorTable"></div></div>
- <div class="card"><h2>計算されたマーク座標</h2><div id="racePoints" class="race-results"><p class="note">「コースを計算」を押すと座標を表示します。</p></div></div>
- <div class="race-warn">注意：これはマークレイヤーの計算式を参考にした試作機能です。マークレイヤーとの座標照合・実海面での検証が必要です。安全上重要な設置判断には、必ず公式情報・現場確認・複数人での照合を行ってください。</div>
+ <div class="race-warn">設置前に座標と現場状況を確認してください。</div>
 </section>
 
-<div class="footer">DOKKYO Mark Assistant · BETA 5.5<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
+<div class="footer">DOKKYO Mark Assistant · BETA 5.6<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
@@ -224,7 +225,7 @@ https://..."></textarea></div>
 const $=id=>document.getElementById(id),rad=d=>d*Math.PI/180,deg=r=>r*180/Math.PI,norm=d=>(d%360+360)%360;
 let planned={},actual={},finishMidpointPlan=null,realMap=null,realMapLayers=[],liveWatchId=null,liveMarker=null,livePosition=null,anchorKey=null,courseGenerated=false,sagamiOverlay=null,hakkeiAreaLayer=null,navSelected="",raceNavSelected="";
 // マーク表示名
-const labels={1:"1番マーク（風上）",4:"4番マーク（風下）",3:"サイドマーク",S:"スタートピン",RC:"スタートライン本部船側",F1:"フィニッシュライン端A",F2:"フィニッシュライン端B",finishBoat:"フィニッシュボート（風上側）",finishPin:"フィニッシュピン（風下側）",R:"レスキュー艇（ホバリング位置）","4S":"4Sマーク（スタートライン左端）","4P":"4Pマーク（スタートライン右端）"};
+const labels={1:"1マーク（風上）",4:"4マーク（風下）",3:"サイドマーク",S:"スタートピン",RC:"スタートライン本部船側",F1:"フィニッシュライン端A",F2:"フィニッシュライン端B",finishBoat:"フィニッシュボート（風上側）",finishPin:"フィニッシュピン（風下側）",R:"レスキュー艇（ホバリング位置）","4S":"4Sマーク（スタートライン左端）","4P":"4Pマーク（スタートライン右端）"};
 // ============================================================
 // 2. コース設定・幾何計算
 // ============================================================
@@ -426,7 +427,7 @@ function diagnostics(){
      `<small>両端のGPS精度から算出した目安：距離 ±${acc===null?"—":acc.toFixed(1)+"m"} ／ 方位 ±${angleTolerance===null?"—":angleTolerance.toFixed(1)+"°"}</small>`;
  }else{
    $("actualDist").textContent="—";$("actualBearing").textContent="—";
-   $("diagStatus").textContent="1番・4番マークの実測座標を登録してください。";
+   $("diagStatus").textContent="1マーク・4マークの実測座標を登録してください。";
  }
 
  let extra="";
@@ -437,7 +438,7 @@ function diagnostics(){
      const included=Math.abs(((b.bearing-a.bearing+540)%360)-180);
      extra=`<div class="kpi" style="margin-top:9px"><small>実測 1番から見た1-4／1-サイド角</small><strong>${included.toFixed(1)}°</strong><small>設定角：60.0° ／ 誤差 ${(included-60).toFixed(1)}°</small></div>`;
    }else{
-     extra=`<div class="status">トライアングルの角度診断には1番・4番・サイドマークの登録が必要です（設定角60°）。</div>`;
+     extra=`<div class="status">トライアングルの角度診断には1マーク・2マーク・4マークの登録が必要です（設定角60°）。</div>`;
    }
  }
  if(cfg.course==="practice"||cfg.course==="practiceLine"){
@@ -605,7 +606,7 @@ function ensureSagamiChartPane(map){
  if(!map)return;
  if(!map.getPane("sagamiChartPane")){
   const pane=map.createPane("sagamiChartPane");
-  pane.style.zIndex="350"; // tilePane=200, chart=350, overlayPane=400, markerPane=600
+  pane.style.zIndex="450"; // tiles=200, vector overlays=400, chart=450, markers=600
   pane.style.pointerEvents="none";
  }
 }
@@ -680,7 +681,7 @@ function updateLiveReadings(){
    return;
  }
  if(!o){
-   $("liveReadings").innerHTML='<strong>現在地から計画ポイントまで</strong><p class="note">先にコースに応じた配置原点マーク（1番または4P）をGPS登録してください。</p>';
+   $("liveReadings").innerHTML='<strong>現在地から計画ポイントまで</strong><p class="note">先にコースに応じた配置原点マーク（1マークまたは4P）をGPS登録してください。</p>';
    return;
  }
  const rows=Object.keys(planned).filter(k=>k!=="R").map(k=>{
@@ -901,7 +902,7 @@ function raceCalc(){
  raceComputed={config:c,points:p,diagnostics:{courseBase,start4,centerDelta,start4S,start4P,course4S:raceStep(courseBase,c.gw/2,norm(ws-90),raceRadii(courseBase.lat,courseBase.lon)),course4P:raceStep(courseBase,c.gw/2,norm(ws+90),raceRadii(courseBase.lat,courseBase.lon))}};return raceComputed;
 }
 function raceCoord(p){const la=Math.floor(p.lat),lo=Math.floor(p.lon);return `N${la}°${((p.lat-la)*60).toFixed(4)}′ E${lo}°${((p.lon-lo)*60).toFixed(4)}′`;}
-function raceMarkLabel(k){return ({'1':'マーク1','2':'マーク2','3':'マーク3','4':'マーク4','3S':'3S（ゲート左舷）','3P':'3P（ゲート右舷）','4S':'コース側4S','4P':'コース側4P','finish':'フィニッシュ基準点','finishBoat':'フィニッシュ船（風上側）','finishPin':'フィニッシュピン（風下側）','signal':'シグナルボート','outer':'スタピン','start4':'スタート側4マーク','startLineS':'スタートライン側マーク（左端）','startLineP':'スタピン'}[k]||k)}
+function raceMarkLabel(k){return ({'1':'マーク1','2':'2マーク（サイドマーク）','3':'3マーク','4':'マーク4','3S':'3S（ゲート左舷）','3P':'3P（ゲート右舷）','4S':'コース側4S','4P':'コース側4P','finish':'フィニッシュ基準点','finishBoat':'フィニッシュ船（風上側）','finishPin':'フィニッシュピン（風下側）','signal':'シグナルボート','outer':'スタピン','start4':'スタート側4マーク','startLineS':'スタートライン側マーク（左端）','startLineP':'スタピン'}[k]||k)}
 function raceRegisterGps(k){gps((f,e)=>{if(!f){$('raceStatus').textContent=e;return}raceActual[k]=f;raceSaveGps();raceRender();$('raceStatus').textContent=`${raceMarkLabel(k)}をGPS登録しました。精度 ±${Math.round(f.accuracy)}m`;});}
 function raceRemoveGps(k){delete raceActual[k];raceSaveGps();raceRender();}
 function updateRaceSagamiOverlay(){
@@ -921,16 +922,7 @@ function updateRaceHakkeiArea(){
   raceHakkeiAreaLayer=L.polygon(area,{color:"#6426e8",weight:4,opacity:0.95,fillColor:"#6426e8",fillOpacity:0.13,interactive:false}).addTo(raceMap);
  }else if(!enabled&&raceHakkeiAreaLayer){raceMap.removeLayer(raceHakkeiAreaLayer);raceHakkeiAreaLayer=null;}
 }
-function updateRaceLiveReadings(){
- const el=$('raceLiveReadings');
- if(!raceLivePosition){el.textContent='現在地を取得すると、計画マークまでの距離・方位を表示します。';return;}
- if(!raceComputed){el.textContent='先にマークレイヤー計画を計算してください。';return;}
- const rows=Object.entries(raceComputed.points).filter(([k])=>k!=='finish').map(([k,p])=>{
-  const iv=raceInverse(raceLivePosition,p,raceRadii(raceLivePosition.lat,raceLivePosition.lon));
-  return `<tr><td>${raceMarkLabel(k)}</td><td><strong>${iv.distance.toFixed(0)}m</strong></td><td><strong>${String(Math.round(iv.bearing)%360).padStart(3,'0')}°</strong></td></tr>`;
- }).join('');
- el.innerHTML=`<strong>現在地から計画マークまで</strong><table><thead><tr><th>計画マーク</th><th>距離</th><th>方位角</th></tr></thead><tbody>${rows}</tbody></table><small>方位は真北000°基準・時計回り。GPS精度 ±${Math.round(raceLivePosition.accuracy||0)}m</small>`;
-}
+function updateRaceLiveReadings(){ /* 距離・方位表示はマーク誘導に集約 */ }
 function stopRaceLiveGps(){
  if(raceLiveWatchId!==null){navigator.geolocation.clearWatch(raceLiveWatchId);raceLiveWatchId=null;}
  $('raceLiveGps').textContent='リアルタイム現在地を表示';$('raceLiveStatus').textContent='現在地の追跡は停止中です。';
@@ -1133,7 +1125,7 @@ function rasParseDmm(text){
  const course=findUrl(c=>/trapezoid|\blr\b|\blg\b/i.test(c));
  const labelled=(label)=>{const lines=text.split(/\r?\n/);for(let i=0;i<lines.length;i++){if(label.test(lines[i])){for(let j=i;j<Math.min(i+4,lines.length);j++){const c=coord(lines[j]);if(c)return c;}}}return null;};
  const signal=labelled(/シグナルボート|シグナル艇/i)||((start||course)?(()=>{const q=(start||course).params;if(!q.has('icd')||!q.has('icm')||!q.has('kcd')||!q.has('kcm'))return null;const lat=Number(q.get('icd'))+Number(q.get('icm'))/60,lon=Number(q.get('kcd'))+Number(q.get('kcm'))/60;return Number.isFinite(lat)&&Number.isFinite(lon)?{lat,lon}:null;})():null);
- const mark4=labelled(/マーク\s*4|マーク４|４番マーク|4番マーク/i)||(course?(()=>{const q=course.params;const lat=Number(q.get('id'))+Number(q.get('im'))/60,lon=Number(q.get('kd'))+Number(q.get('km'))/60;return Number.isFinite(lat)&&Number.isFinite(lon)?{lat,lon}:null;})():null);
+ const mark4=labelled(/マーク\s*4|マーク４|４マーク|4マーク/i)||(course?(()=>{const q=course.params;const lat=Number(q.get('id'))+Number(q.get('im'))/60,lon=Number(q.get('kd'))+Number(q.get('km'))/60;return Number.isFinite(lat)&&Number.isFinite(lon)?{lat,lon}:null;})():null);
  if(!start&&!course)throw Error('マークレイヤーのスタート用またはコース用URLが見つかりません。');
  if(!signal&&!mark4)throw Error('座標を読み取れません。座標行またはURL内の座標パラメータを確認してください。');
  const qCourse=course?.params, qStart=start?.params;
