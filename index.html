@@ -137,6 +137,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 
 <section id="share">
  <div class="card">
+  <h2>送信：DMA → DMA（コース準備）</h2>
+  <p class="note">通常運用のコース設定・配置原点・登録済み実測位置を共有します。</p>
+  <button class="primary full" id="sharePlan">全データを共有リンクにする</button>
+  <div class="status" id="shareStatus">共有リンクはURLにデータを含めます。長大なデータでは共有できない場合があります。</div>
+ </div>
+ <div class="card">
   <h2>受信：マークレイヤー → DMA</h2>
   <p class="note">マークレイヤーの共有メッセージまたはリンクを貼り付けて、レース設定を読み込みます。</p>
   <div class="field"><label for="rasPaste">共有メッセージ</label><textarea id="rasPaste" rows="8" placeholder="シグナルボート:
@@ -157,12 +163,6 @@ https://..."></textarea></div>
   <div class="field" style="margin-top:10px"><label for="rasExportMessage">共有メッセージ（コース用・スタート用）</label><textarea id="rasExportMessage" rows="9" readonly placeholder="共有リンクを作成すると、2種類のリンクが表示されます。"></textarea></div>
   <button class="secondary full" id="rasExportCopy" disabled>共有メッセージをコピー</button>
   <div class="status" id="rasExportStatus">コースを計算してから共有リンクを作成してください。</div>
- </div>
- <div class="card">
-  <h2>送信：DMA → DMA（コース準備）</h2>
-  <p class="note">通常運用のコース設定・配置原点・登録済み実測位置を共有します。</p>
-  <button class="primary full" id="sharePlan">全データを共有リンクにする</button>
-  <div class="status" id="shareStatus">共有リンクはURLにデータを含めます。長大なデータでは共有できない場合があります。</div>
  </div>
  <div class="card">
   <h2>送信：DMA → DMA（レース運営）</h2>
@@ -1115,8 +1115,15 @@ function raceDModeUpdate(){
  $('raceD').hidden=manual;$('raceDManual').hidden=!manual;
  $('raceDModeHint').textContent=manual?'手入力値はDMA内でのみ使用します。マークレイヤー共有リンクは安全のためロックされます。':'マークレイヤーの選択肢にある距離です。マークレイヤー共有リンクを作成できます。';
  $('raceDModeHint').classList.toggle('ras-lock-warning',manual);
+ // 手入力中は古いリンク・メッセージを残さず、生成とコピーの両方をロックする。
  $('rasExport').disabled=manual;
- $('rasExportStatus').textContent=manual?'1–4距離が手入力モードです。マークレイヤー共有リンクは作成できません。':'コースを計算してから共有リンクを作成してください。';
+ $('rasExportCopy').disabled=manual;
+ if(manual){
+  $('rasExportMessage').value='';
+  $('rasExportStatus').textContent='1–4距離が手入力モードのため、マークレイヤー共有リンクの作成・コピーはロックされています。';
+ }else{
+  $('rasExportStatus').textContent='コースを計算してから共有リンクを作成してください。';
+ }
  $('rasExportStatus').classList.toggle('ras-lock-warning',manual);
 }
 $('raceDModeSelect').addEventListener('change',raceDModeUpdate);
@@ -1173,7 +1180,7 @@ function rasCreateShare(){
   $('rasExportMessage').value=message;
   $('rasExportCopy').disabled=false;
   $('rasExportStatus').textContent='コース用・スタート用の2つのマークレイヤー共有リンクを作成しました。トラペゾイドでは2–3距離（b×1–4距離）とr123内角もメッセージに明記しています。マークレイヤー側で開き、値と地図を照合してください。';
- }catch(e){$('rasExportStatus').textContent='リンクを作成できません：'+e.message;}
+ }catch(e){$('rasExportMessage').value='';$('rasExportCopy').disabled=true;$('rasExportStatus').textContent='リンクを作成できません：'+e.message;}
 }
 $('rasExport').addEventListener('click',rasCreateShare);
 $('rasExportCopy').addEventListener('click',async()=>{
