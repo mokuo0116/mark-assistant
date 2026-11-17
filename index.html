@@ -113,7 +113,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
     <div class="field" id="finishDistField"><label>4-フィニッシュ基準距離（m）</label><input id="finishDist" type="number" min="1" value="200"></div>
     <div class="field" id="finishLineField"><label>フィニッシュライン長（m）</label><input id="finishLine" type="number" min="1" value="50"></div><div class="field" id="tgGateField" hidden><label>下ゲート幅（4S–4P・m）</label><input id="tgGateWidth" type="number" min="1" value="100"></div>
    </div>
-   <p class="note">B・BFコースでは基準マークを選択できます。TGコースは4Pマークを配置原点とし、4S–4Pの中点を仮想4マークとして扱います。4S–4Pゲートをスタート兼フィニッシュに使用します。</p>
+   <p class="note">B・BFコースでは基準マークを選択できます。TGコースは4Pマークを配置原点とし、4S–4Pの中点を4マークとして表示します。4S–4Pゲートをスタート兼フィニッシュに使用します。</p>
    <details class="help"><summary>B・BFコースの配置ルール</summary><p class="note">選択した基準マーク（4Pまたは1マーク）の実測位置を基準にコースを配置します。4S・4Pは左右対称です。ラインなしでは4Sから風軸+120°、4Pから風軸−160°に引いた半直線の交点をレスキュー艇の待機位置とします。フィニッシュ距離・ライン長はラインありの場合のみ設定します。</p></details>
    <div id="tgHelp" class="status" hidden>TGコース航路：スタートゲート → 1 → 4ゲート → 1 → 2（サイド） → 4ゲート（フィニッシュ）。4は4S・4Pの中点で、物理マークではありません。</div>
   </div>
@@ -280,7 +280,7 @@ https://..."></textarea></div>
 const $=id=>document.getElementById(id),rad=d=>d*Math.PI/180,deg=r=>r*180/Math.PI,norm=d=>(d%360+360)%360;
 let planned={},actual={},finishMidpointPlan=null,realMap=null,realMapLayers=[],liveWatchId=null,liveMarker=null,livePosition=null,anchorKey=null,courseGenerated=false,sagamiOverlay=null,hakkeiAreaLayer=null,navSelected="",raceNavSelected="";
 // マーク表示名
-const labels={1:"1マーク（風上）",4:"4マーク（風下・仮想中心）",2:"2マーク（サイド）",3:"サイドマーク",S:"スタートピン",RC:"スタートライン本部船側",F1:"フィニッシュライン端A",F2:"フィニッシュライン端B",finishBoat:"フィニッシュボート（風上側）",finishPin:"フィニッシュピン（風下側）",R:"レスキュー艇（ホバリング位置）","4S":"4Sマーク（ゲート左端）","4P":"4Pマーク（ゲート右端）"};
+const labels={1:"1マーク（風上）",4:"4マーク（風下）",2:"2マーク（サイドマーク）",3:"3マーク",S:"スタートピン",RC:"スタートライン本部船側",F1:"フィニッシュライン端A",F2:"フィニッシュライン端B",finishBoat:"フィニッシュボート（風上側）",finishPin:"フィニッシュピン（風下側）",R:"レスキュー艇（ホバリング位置）","4S":"4Sマーク（ゲート左端）","4P":"4Pマーク（ゲート右端）"};
 // ============================================================
 // 2. コース設定・幾何計算
 // ============================================================
@@ -322,7 +322,7 @@ function makePlan(showCourse=true){
 
  if(s.course==="triangle"){
    // Port-side equilateral triangle.
-   p["3"]=v(norm(s.wind-90),s.d14*Math.sqrt(3)/2);
+   p["2"]=v(norm(s.wind-90),s.d14*Math.sqrt(3)/2);
  }
  if(s.course==="tg"){
    // Triangle Gate: the virtual mark 4 is the midpoint of the lower gate.
@@ -529,7 +529,7 @@ function diagnostics(){
 
  let extra="";
  if(cfg.course==="triangle"||cfg.course==="tg"){
-   const side=actual[cfg.course==="tg"?"2":"3"];
+   const side=actual["2"];
    if(p1&&p4&&side){
      const a=inverse(p1,p4),b=inverse(p1,side);
      const included=Math.abs(((b.bearing-a.bearing+540)%360)-180);
@@ -537,7 +537,7 @@ function diagnostics(){
    }else{
      extra=`<div class="status">${cfg.course==="tg"?"TGコース":"Tコース"}の角度診断には1マーク・サイドマーク・4マーク（TGでは4S・4P両方）の登録が必要です。設定角60°。</div>`;
    }
-   if(cfg.course==="tg")extra+=`<div class="status">4マークは4S・4Pの実測中点から算出しています。4マーク自体のGPS登録は不要です。</div>`;
+   if(cfg.course==="tg")extra+=`<div class="status">4マークは4S・4Pの実測中点から算出しています。4S・4Pの両方をGPS登録してください。</div>`;
  }
  if(cfg.course==="practice"||cfg.course==="practiceLine"){
    extra=`<div class="status">B・BFコースの基本コース角は1番・4番の実測位置から診断します。ラインは両端のGPS精度を考慮して評価します。</div>`;
@@ -745,7 +745,13 @@ function updateHakkeiArea(){
 function bearingText(n){return `${String(Math.round(n)%360).padStart(3,"0")}°`}
 function navUpdate(prefix,items,position,map,selected,setSelected,resolve,inverseFn){
  const select=$(prefix ? prefix+'NavTarget' : 'navTarget'),readout=$(prefix ? prefix+'NavReadout' : 'navReadout'),hint=$(prefix ? prefix+'NavHint' : 'navHint');
- const keys=Object.keys(items||{}).filter(k=>k!=="R"&&k!=="finish"&&k!=="signal"&&k!=="outer");
+ const course=settings().course;
+ const isMainNav=!prefix;
+ const keys=Object.keys(items||{}).filter(k=>
+   (k!=="R"||(isMainNav&&course==="practice"))&&
+   !(k==="4"&&(course==="practice"||course==="practiceLine"||course==="tg"))&&
+   k!=="finish"&&k!=="signal"&&k!=="outer"
+ );
  if(!keys.length){select.innerHTML='<option value="">計画マークなし</option>';readout.textContent='計画マークがありません';hint.textContent='コース生成ボタンを押し、計画マークが作成されたことを確認してください。';return;}
  if(!keys.includes(selected)){selected=keys[0];setSelected(selected);}
  select.innerHTML=keys.map(k=>`<option value="${k}" ${k===selected?'selected':''}>${k}：${(labels[k]||k)}</option>`).join('');
@@ -776,7 +782,11 @@ function updateLiveReadings(){
    $("liveReadings").innerHTML='<strong>現在地から計画ポイントまで</strong><p class="note">先にコースに応じた配置原点マーク（1マークまたは4P）をGPS登録してください。</p>';
    return;
  }
- const rows=Object.keys(planned).filter(k=>k!=="R"&&!(settings().course==="tg"&&k==="4")).map(k=>{
+ const course=settings().course;
+ const rows=Object.keys(planned).filter(k=>
+   (k!=="R"||course==="practice")&&
+   !(k==="4"&&(course==="practice"||course==="practiceLine"||course==="tg"))
+ ).map(k=>{
    const g=geo(o,planned[k]),iv=inverse(livePosition,g),magBearing=bearingTrueToMagnetic(iv.bearing,livePosition.lat,livePosition.lon);
    return `<tr><td><strong>${k}</strong> ${labels[k]||k}</td><td><strong>${iv.dist.toFixed(0)} m</strong></td><td><strong>${bearingText(magBearing)}</strong></td></tr>`;
  }).join("");
@@ -960,7 +970,7 @@ initializeApp();
 // 10. マークレイヤー互換レース運営モード（試作）
 // ============================================================
 $("navTarget").addEventListener("change",e=>{navSelected=e.target.value;updateNav();const o=origin();navFocus("nav",realMap,navSelected,k=>o&&planned[k]?geo(o,planned[k]):null);});
-$("navNext").addEventListener("click",()=>{const keys=Object.keys(planned).filter(k=>k!=="R"&&!(settings().course==="tg"&&k==="4"));if(!keys.length)return;navSelected=keys[(keys.indexOf(navSelected)+1+keys.length)%keys.length];updateNav();const o=origin();navFocus("nav",realMap,navSelected,k=>o&&planned[k]?geo(o,planned[k]):null);});
+$("navNext").addEventListener("click",()=>{const course=settings().course;const keys=Object.keys(planned).filter(k=>(k!=="R"||course==="practice")&&!(k==="4"&&(course==="practice"||course==="practiceLine"||course==="tg"))&&k!=="finish"&&k!=="signal"&&k!=="outer");if(!keys.length)return;navSelected=keys[(keys.indexOf(navSelected)+1+keys.length)%keys.length];updateNav();const o=origin();navFocus("nav",realMap,navSelected,k=>o&&planned[k]?geo(o,planned[k]):null);});
 
 let raceMap=null, raceLayer=null, raceComputed=null, raceActual={}, raceActualConfigSignature=null, raceFinishLengthTouched=false;
 let raceLiveWatchId=null,raceLivePosition=null,raceLiveMarker=null,raceSagamiOverlay=null,raceHakkeiAreaLayer=null;
