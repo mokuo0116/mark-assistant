@@ -1,28 +1,20 @@
-DOKKYO Mark Assistant BETA 6.9
-================================
+DOKKYO Mark Assistant BETA 6.11
+=================================
 
-BETA 6.9
-- GitHub Pages / HTTPS向けにService Workerを追加
-- Chrome AndroidのWebアプリ判定に必要なfetchイベントハンドラーを登録
-- ホーム画面用アイコン候補を安全領域付き画像に統一
-- Manifestに安定したidを追加
+BETA 6.11 修正
+- updateLiveReadings() の未定義 cfg 参照を settings().course に修正
+- レース運営用CSSの文字列化された改行を実改行へ修正
+- フッターの旧バージョン表記をBETA 6.11へ統一
+- レース運営モードの地図に適用していた contain: paint / isolation の強制指定を撤去
+- Leaflet標準のpane配置・transform管理を尊重するよう変更
+- 地図表示領域の高さを明示
+- レース運営タブ表示後に2段階でinvalidateSizeを実行
+- タイルレイヤー初期化後に海図・帆走区域レイヤーを追加する順序に整理
 
-GitHub Pagesへの配置
-- index.html
-- manifest.webmanifest
-- sw.js
-- assets/ フォルダ
-上記を同じ公開ディレクトリに配置してください。
+配布
+- GitHub Pages公開ディレクトリへ、index.html / manifest.webmanifest / sw.js / assets をすべて配置してください。
+- 古いService Workerが残る場合は、ページ再読み込み後に時間を置いて再確認してください。
 
-更新後の手順
-1. GitHub PagesへBETA 6.9一式をアップロード・公開
-2. ChromeでDMAのページを開き、再読み込み
-3. 既存のホーム画面ショートカットを削除
-4. Chromeのメニューから「ホーム画面に追加」を実行
-5. アイコンが更新されるか確認
-
-注意
-- Service Workerはfetchを横取りせず、キャッシュもしません。通常のネットワーク読み込みを維持します。
-- 既存のショートカットは古いアイコンを保持する場合があるため、削除して再追加してください。
-- GitHub Pagesのリポジトリ配下パスでも動くよう、登録・Manifest・アイコン参照は相対パスです。
-- 実機Chromeの最終判定・アイコン更新は端末で確認してください。
+確認事項
+- この修正はLeafletの標準レイヤー配置に戻すものです。
+- 実機Chromeでの地図タイル取得・表示は最終確認が必要です。

@@ -1,0 +1,38 @@
+DOKKYO Mark Assistant BETA 6.11 — 静的監査メモ
+================================================
+
+更新内容（BETA 6.10 → BETA 6.11）
+- updateLiveReadings() 内の未定義 cfg.course 参照を settings().course に修正。
+- .race-point-actions と .race-error-table の間にあった文字列化された \n を実改行に修正。
+- title / ヘッダー / フッター / README のバージョン表記を 6.11 に統一。
+- 地図レイアウトやGPS・コース計算ロジックには意図的に手を加えていない。
+
+自動・静的検査
+- インラインJavaScript 2本：node --check 通過。
+- CSS：tinycss2 によるトップレベル・宣言解析エラーなし。
+- HTML ID：115件、重複なし。
+- data-tab の5タブ：対応する section がすべて存在。
+- 静的に列挙できたDOM参照：動的生成される angleExtra / deleteAllHistory を除き存在。
+- ローカル画像・アイコン・manifest の参照先：すべて存在。
+- PNGアイコン：48 / 180 / 192 / 512 / 512 px の各ファイルを確認。
+- 既知の cfg.course 不具合箇所：修正済み。関数外の正当な cfg.course 参照は残る。
+- CSSの literal \n.race-error-table：残存なし。
+- ZIP整合性：別途 zip -T で確認。
+
+追加で確認した注意点（今回の修正対象外）
+1. 初期ロード時に startLiveGps() と startRaceLiveGps() の両方を呼び出す設計。
+   通常モードとレース運営モードの watchPosition が同時に稼働するため、位置情報許可・電池消費の観点で実機確認が必要。
+   現状の画面文言・コメントは自動取得を意図しているため、仕様変更は行っていない。
+2. 共有データ decodeData()/applyData() は、JSON構造・座標値・設定値の検証が限定的。
+   壊れた共有リンクや想定外データで描画処理が例外になる可能性がある。入力検証を追加する改善候補。
+3. Leaflet本体は unpkg CDN から読み込む。通信・CDN障害時は地図機能が利用できない可能性がある。
+   SRIハッシュは設定されていない。
+4. Service Worker は network-only で、キャッシュ・オフライン動作を提供しない。
+   オフライン利用を想定するなら別途キャッシュ設計と更新戦略が必要。
+5. レース運営地図の白画面問題はコードの静的検査だけでは解消確認できない。
+   実際のGitHub Pages HTTPS環境・Android Chromeで表示確認が必要。
+
+検査上の制約
+- Chromium起動は実行環境の管理者ポリシーでブロックされ、Playwrightによるブラウザ操作試験は未実施。
+- GPS許可・実測、Leafletタイル取得、GitHub Pages上のService Worker登録、PWAアイコン表示、各コースの数値的な海上照合は未実施。
+- したがって本メモは静的検査結果であり、実機・海上での動作保証ではない。

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<title>DOKKYO Mark Assistant BETA 6.9</title>
+<title>DOKKYO Mark Assistant BETA 6.11</title>
 <style>
 :root{--navy:#002D8C;--blue:#002D8C;--bg:#ffffff;--ink:#17232d;--muted:#657784;--line:#d8e1e7;--green:#16845b;--red:#c34c45}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif}
@@ -31,7 +31,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 .footer{text-align:center;color:#82919a;font-size:10px;padding:15px}
 @media(min-width:600px){main{padding:22px}}
 
-.race-point-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}\n.race-error-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}.race-error-table th,.race-error-table td{padding:8px 5px;border-bottom:1px solid var(--line);text-align:left}.race-error-table th{color:var(--muted);font-weight:700}.race-delta{font-weight:800;font-variant-numeric:tabular-nums}
+.race-point-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.race-error-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}.race-error-table th,.race-error-table td{padding:8px 5px;border-bottom:1px solid var(--line);text-align:left}.race-error-table th{color:var(--muted);font-weight:700}.race-delta{font-weight:800;font-variant-numeric:tabular-nums}
 .race-point-actions button{font-size:12px;padding:6px 9px}
 .ras-lock-warning{color:#c62828!important;font-weight:800;display:block;margin-top:7px}.ras-lock-warning::before{content:"🔒 ";}
 
@@ -61,24 +62,22 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" content="#0D477D">
 <style>
-/* BETA 6.9: isolate Leaflet layers inside their own map viewport */
+/* BETA 6.11: keep Leaflet's native pane geometry; clip only at the map frame */
 #realMap, #raceMap.race-map {
   position: relative !important;
-  isolation: isolate;
   overflow: hidden;
-  contain: layout paint;
 }
-#raceMap .leaflet-pane,
-#raceMap .leaflet-control-container {
-  position: absolute;
+#raceMap.race-map {
+  display: block;
+  height: 390px;
+  min-height: 390px;
+  width: 100%;
 }
 #raceMap .sagami-chart-pane {
   z-index: 350 !important;
   pointer-events: none !important;
 }
-#raceMap .sagami-chart-pane img,
-#raceMap .leaflet-image-layer {
-  position: absolute !important;
+#raceMap .sagami-chart-pane img {
   max-width: none !important;
 }
 #raceMap .map-recenter {
@@ -89,7 +88,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 
 </head>
 <body>
-<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>DOKKYO Mark Assistant <span style="font-size:11px;font-weight:500;opacity:.7">BETA 6.9</span></h1></header>
+<header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>DOKKYO Mark Assistant <span style="font-size:11px;font-weight:500;opacity:.7">BETA 6.11</span></h1></header>
 <nav aria-label="作業モード"><button class="active" data-tab="setting">コース準備</button><button data-tab="map">設置</button><button data-tab="analysis">配置評価</button><button data-tab="race">レース運営</button><button data-tab="share">共有</button></nav>
 <main>
 <section id="setting" class="active">
@@ -269,7 +268,7 @@ https://..."></textarea></div>
  <div class="race-warn">設置前に座標と現場状況を確認してください。</div>
 </section>
 
-<div class="footer">DOKKYO Mark Assistant · BETA 6.5<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
+<div class="footer">DOKKYO Mark Assistant · BETA 6.11<br>試作版です。実際の設置・安全判断を代替するものではありません。</div>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
@@ -703,7 +702,6 @@ function ensureSagamiChartPane(map){
  if(!map.getPane("sagamiChartPane")){
   const pane=map.createPane("sagamiChartPane");
   pane.classList.add("sagami-chart-pane");
-  pane.style.position="absolute";
   pane.style.zIndex="350"; // tiles=200, chart=350, vector overlays=400, markers=600
   pane.style.pointerEvents="none";
  }
@@ -772,7 +770,7 @@ function updateLiveReadings(){
    $("liveReadings").innerHTML='<strong>現在地から計画ポイントまで</strong><p class="note">先にコースに応じた配置原点マーク（1マークまたは4P）をGPS登録してください。</p>';
    return;
  }
- const rows=Object.keys(planned).filter(k=>k!=="R"&&!(cfg.course==="tg"&&k==="4")).map(k=>{
+ const rows=Object.keys(planned).filter(k=>k!=="R"&&!(settings().course==="tg"&&k==="4")).map(k=>{
    const g=geo(o,planned[k]),iv=inverse(livePosition,g),magBearing=bearingTrueToMagnetic(iv.bearing,livePosition.lat,livePosition.lon);
    return `<tr><td><strong>${k}</strong> ${labels[k]||k}</td><td><strong>${iv.dist.toFixed(0)} m</strong></td><td><strong>${bearingText(magBearing)}</strong></td></tr>`;
  }).join("");
@@ -914,7 +912,7 @@ $("hakkeiAreaToggle").onchange=updateHakkeiArea;
 
 $("capture").onclick=()=>{let k=$("gpsMark").value;gps((f,e)=>{if(!f){$("gpsStatus").textContent=e;return}actual[k]=f;if(k===anchorTarget()){anchorKey=k;$("baseLat").value=f.lat.toFixed(6);$("baseLon").value=f.lon.toFixed(6);$("baseStatus").textContent=`${labels[k]||k}を配置原点として登録しました。`}$("gpsStatus").textContent=`${labels[k]||k}を登録。${f.lat.toFixed(6)}, ${f.lon.toFixed(6)} ／ 精度 ±${Math.round(f.accuracy)}m`;renderAll()})};
 $("clearGps").onclick=()=>{if(confirm("実測座標をすべて削除しますか？")){actual={};renderAll();$("gpsStatus").textContent="実測座標を削除しました。"}};
-document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll("main section").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab));renderAll();if(b.dataset.tab==="map"&&realMap)setTimeout(()=>{realMap.invalidateSize();updateSagamiOverlay();},120);if(b.dataset.tab==="race"){if(!raceComputed)raceCalculate();if(raceMap)setTimeout(()=>{raceMap.invalidateSize({pan:false});updateRaceSagamiOverlay();if(raceSagamiOverlay)raceSagamiOverlay.setBounds(SAGAMI_RACE_MAP_BOUNDS);},220)}});
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll("main section").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab));renderAll();if(b.dataset.tab==="map"&&realMap)setTimeout(()=>{realMap.invalidateSize();updateSagamiOverlay();},120);if(b.dataset.tab==="race"){if(!raceComputed)raceCalculate();requestAnimationFrame(()=>requestAnimationFrame(()=>{if(raceMap){raceMap.invalidateSize({pan:false,animate:false});updateRaceSagamiOverlay();if(raceSagamiOverlay)raceSagamiOverlay.setBounds(SAGAMI_RACE_MAP_BOUNDS);setTimeout(()=>raceMap&&raceMap.invalidateSize({pan:false,animate:false}),250);}}))}});
 let normalCalcTimer=null;
 function scheduleNormalRecalc(){clearTimeout(normalCalcTimer);normalCalcTimer=setTimeout(()=>{try{makePlan(true);}catch(e){$('mapStatus').textContent='コースを再計算できません：'+e.message;}},220);}
 ["wind","d14","startDist","finishDist","finishLine","tgGateWidth"].forEach(k=>{ $(k).addEventListener("input",scheduleNormalRecalc); $(k).addEventListener("change",scheduleNormalRecalc); });
@@ -1114,7 +1112,7 @@ function raceRender(){
  $('raceErrorSummary').textContent=measuredRows.length?`実測 ${measuredRows.length}地点を比較中。距離・方位は実測位置から計画位置への方向。端末のGPS精度は推定値であり、保証された誤差範囲ではありません。`:'GPS実測マークはまだありません。マークを登録すると計画位置との差を表示します。';
  $('raceErrorTable').innerHTML=measuredRows.length?`<table class="race-error-table"><thead><tr><th>マーク</th><th>位置差</th><th>修正方位</th><th>GPS精度</th><th>目安</th></tr></thead><tbody>${measuredRows.join('')}</tbody></table>`:'<p class="note">比較できる実測マークがありません。</p>';
  if(!raceMap){raceMap=L.map('raceMap').setView([35.34503,139.66472],15);
-   updateRaceHakkeiArea();L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(raceMap);raceLayer=L.layerGroup().addTo(raceMap);raceMap._raceUserMovedView=false;raceMap._raceHasPlanView=false;raceMap.on('dragstart zoomstart',()=>{if(!raceMap._raceProgrammaticView)raceMap._raceUserMovedView=true;});}
+   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(raceMap);raceLayer=L.layerGroup().addTo(raceMap);raceMap._raceUserMovedView=false;raceMap._raceHasPlanView=false;raceMap.on('dragstart zoomstart',()=>{if(!raceMap._raceProgrammaticView)raceMap._raceUserMovedView=true;});raceMap.whenReady(()=>setTimeout(()=>raceMap&&raceMap.invalidateSize({pan:false,animate:false}),180));updateRaceHakkeiArea();}
  updateRaceSagamiOverlay();raceLayer.clearLayers();
  const coords={};for(const [k,v] of entries){const ll=[v.lat,v.lon];coords[k]=ll;L.circleMarker(ll,{radius:7,color:'#fff',weight:2,fillColor:k==='finishBoat'?'#16845b':k==='finishPin'?'#c34c45':k==='signal'?'#7046b8':'#002D8C',fillOpacity:1}).bindPopup(`<b>${raceMarkLabel(k)}・計画</b><br>${raceCoord(v)}<br>${v.lat.toFixed(7)}, ${v.lon.toFixed(7)}`).addTo(raceLayer)}
  // 計画線はスタートラインとフィニッシュラインのみ表示。コース辺・ゲート線は描画しない。
