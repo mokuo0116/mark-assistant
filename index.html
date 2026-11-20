@@ -29,6 +29,16 @@ details.help .note{margin:8px 0 0}
 section .card>p.note{margin:0 0 12px}
 button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #002D8C;outline-offset:2px}
 .footer{text-align:center;color:#82919a;font-size:10px;padding:15px}
+
+/* High-visibility operation feedback for bright outdoor use */
+#dmaToast{position:fixed;left:12px;right:12px;top:72px;z-index:3000;display:flex;align-items:center;gap:12px;max-width:620px;margin:0 auto;padding:15px 18px;border:3px solid #fff;border-radius:14px;background:#d9f6df;color:#073b1b;box-shadow:0 4px 18px #0008;opacity:0;visibility:hidden;transform:translateY(-10px);transition:opacity .16s ease,transform .16s ease,visibility .16s;pointer-events:none}
+#dmaToast.show{opacity:1;visibility:visible;transform:translateY(0)}
+#dmaToast.error{background:#ffe0dc;color:#68170e}
+#dmaToast .toast-icon{font-size:30px;line-height:1;flex:0 0 auto;font-weight:900}
+#dmaToast .toast-title{font-size:19px;line-height:1.25;font-weight:900;letter-spacing:.01em}
+#dmaToast .toast-detail{font-size:14px;line-height:1.35;font-weight:750;margin-top:3px}
+@media(min-width:600px){#dmaToast{top:78px;padding:16px 22px}#dmaToast .toast-title{font-size:21px}#dmaToast .toast-detail{font-size:15px}}
+@media(prefers-reduced-motion:reduce){#dmaToast{transition:none}}
 @media(min-width:600px){main{padding:22px}}
 
 .race-point-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
@@ -91,6 +101,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 </head>
 <body>
 <header><div class="sub">DOKKYO UNIVERSITY SAILING TEAM</div><h1>DOKKYO Mark Assistant <span style="font-size:11px;font-weight:500;opacity:.7">BETA 6.11</span></h1></header>
+<div id="dmaToast" role="status" aria-live="polite" aria-atomic="true"><span class="toast-icon" aria-hidden="true">✓</span><div><div class="toast-title" id="dmaToastTitle">完了</div><div class="toast-detail" id="dmaToastDetail"></div></div></div>
 <nav aria-label="作業モード"><button class="active" data-tab="setting">コース準備</button><button data-tab="map">設置</button><button data-tab="analysis">配置評価</button><button data-tab="race">レース運営</button><button data-tab="share">共有</button></nav>
 <main>
 <section id="setting" class="active">
@@ -278,6 +289,15 @@ https://..."></textarea></div>
 // 1. 共通ユーティリティ・アプリ状態
 // ============================================================
 const $=id=>document.getElementById(id),rad=d=>d*Math.PI/180,deg=r=>r*180/Math.PI,norm=d=>(d%360+360)%360;
+let dmaToastTimer=null;
+function showDmaToast(title,detail="",type="success"){
+ const box=$("dmaToast");if(!box)return;
+ $("dmaToastTitle").textContent=title;$("dmaToastDetail").textContent=detail;
+ box.classList.toggle("error",type==="error");
+ box.querySelector(".toast-icon").textContent=type==="error"?"!":"✓";
+ box.classList.add("show");clearTimeout(dmaToastTimer);
+ dmaToastTimer=setTimeout(()=>box.classList.remove("show"),2800);
+}
 let planned={},actual={},finishMidpointPlan=null,realMap=null,realMapLayers=[],liveWatchId=null,liveMarker=null,livePosition=null,anchorKey=null,courseGenerated=false,sagamiOverlay=null,hakkeiAreaLayer=null,navSelected="",raceNavSelected="";
 // マーク表示名
 const labels={1:"1マーク（風上）",4:"4マーク（風下）",2:"2マーク（サイドマーク）",3:"3マーク",S:"スタートピン",RC:"スタートライン本部船側",F1:"フィニッシュライン端A",F2:"フィニッシュライン端B",finishBoat:"フィニッシュボート（風上側）",finishPin:"フィニッシュピン（風下側）",R:"レスキュー艇（ホバリング位置）","4S":"4Sマーク（ゲート左端）","4P":"4Pマーク（ゲート右端）"};
@@ -616,7 +636,7 @@ function registerBaseAndMark(){
  const k=simultaneousTarget();
  $("baseStatus").textContent=`${labels[k]||k}の位置を測位中…`;
  gps((f,e)=>{
-   if(!f){$("baseStatus").textContent=e;$("gpsStatus").textContent=e;return}
+   if(!f){$("baseStatus").textContent=e;$("gpsStatus").textContent=e;showDmaToast("基準点を登録できませんでした",e,"error");return}
    $("baseLat").value=f.lat.toFixed(6);
    $("baseLon").value=f.lon.toFixed(6);
    anchorKey=k;
@@ -624,6 +644,7 @@ function registerBaseAndMark(){
    $("baseStatus").textContent=`${labels[k]||k}を配置原点として登録しました。GPS精度 ±${Math.round(f.accuracy)}m`;
    $("gpsStatus").textContent=`${labels[k]||k}を実測登録し、配置計算の原点に設定しました。`;
    renderAll();
+   showDmaToast("基準点登録完了",`${labels[k]||k}を配置原点に設定しました。精度 ±${Math.round(f.accuracy)}m`);
  });
 }
 
@@ -914,14 +935,14 @@ function updatePracticeFields(){
  $("tgGateField").hidden=c!=="tg";
  $("tgHelp").hidden=c!=="tg";
 }
-$("course").onchange=()=>{updatePracticeFields();makePlan(true)};
+$("course").onchange=()=>{updatePracticeFields();makePlan(true);showDmaToast("再計算完了","コース形式を変更して配置を更新しました。");};
 $("practiceAnchor").onchange=()=>{
  anchorKey=null;
  $("baseLat").value="";$("baseLon").value="";
  $("baseStatus").textContent="基準マークを変更しました。新しい基準マークのGPS位置を登録してください。";
- makePlan(true);
+ makePlan(true);showDmaToast("基準マーク変更","新しい基準マークのGPS位置を登録してください。");
 };
-$("generate").onclick=()=>makePlan(true);
+$("generate").onclick=()=>{try{makePlan(true);showDmaToast("再計算完了","コース配置を更新しました。");}catch(e){showDmaToast("再計算できませんでした",e.message,"error");throw e;}};
 $("baseAndMarkGps").onclick=registerBaseAndMark;
 $("sharePlan").onclick=createShareLink;
 $("saveHistory").onclick=saveHistory;
@@ -933,7 +954,7 @@ $("capture").onclick=()=>{let k=$("gpsMark").value;gps((f,e)=>{if(!f){$("gpsStat
 $("clearGps").onclick=()=>{if(confirm("実測座標をすべて削除しますか？")){actual={};renderAll();$("gpsStatus").textContent="実測座標を削除しました。"}};
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll("main section").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab));renderAll();if(b.dataset.tab==="map"&&realMap)setTimeout(()=>{realMap.invalidateSize();updateSagamiOverlay();},120);if(b.dataset.tab==="race"){if(!raceComputed)raceCalculate();requestAnimationFrame(()=>requestAnimationFrame(()=>{if(raceMap){raceMap.invalidateSize({pan:false,animate:false});updateRaceSagamiOverlay();if(raceSagamiOverlay)raceSagamiOverlay.setBounds(SAGAMI_RACE_MAP_BOUNDS);setTimeout(()=>raceMap&&raceMap.invalidateSize({pan:false,animate:false}),250);}}))}});
 let normalCalcTimer=null;
-function scheduleNormalRecalc(){clearTimeout(normalCalcTimer);normalCalcTimer=setTimeout(()=>{try{makePlan(true);}catch(e){$('mapStatus').textContent='コースを再計算できません：'+e.message;}},220);}
+function scheduleNormalRecalc(){clearTimeout(normalCalcTimer);normalCalcTimer=setTimeout(()=>{try{makePlan(true);showDmaToast("再計算完了","設定変更に合わせてコースを更新しました。");}catch(e){$('mapStatus').textContent='コースを再計算できません：'+e.message;showDmaToast("再計算できませんでした",e.message,"error");}},220);}
 ["wind","d14","startDist","finishDist","finishLine","tgGateWidth"].forEach(k=>{ $(k).addEventListener("input",scheduleNormalRecalc); $(k).addEventListener("change",scheduleNormalRecalc); });
 ["baseLat","baseLon"].forEach(k=>$(k).addEventListener("change",()=>{if(courseGenerated)renderAll();}));
 function initializeApp(){
@@ -1170,7 +1191,7 @@ function raceRender(){
 }
 $('racePoints').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.raceGps)raceRegisterGps(b.dataset.raceGps);if(b.dataset.raceRemove)raceRemoveGps(b.dataset.raceRemove)});
 
-function raceCalculate(){try{raceCalc();raceRender();}catch(e){$('raceStatus').textContent='計算できません：'+e.message;}}
+function raceCalculate(){try{raceCalc();raceRender();showDmaToast('再計算完了','レース運営コースを更新しました。');}catch(e){$('raceStatus').textContent='計算できません：'+e.message;showDmaToast('再計算できませんでした',e.message,'error');}}
 $('raceCourse').addEventListener('change',()=>{$('raceTrapFields').hidden=$('raceCourse').value!=='trapezoid'});
 $('raceFinishLineLength').addEventListener('input',()=>{raceFinishLengthTouched=true;});
 $('raceStartLength').addEventListener('input',()=>{if(!raceFinishLengthTouched){const n=Number($('raceStartLength').value);if(Number.isFinite(n)&&n>0)$('raceFinishLineLength').value=(n/5).toFixed(1);}});
