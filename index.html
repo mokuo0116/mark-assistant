@@ -176,8 +176,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 </section>
 <section id="analysis">
  <div class="card"><h2>配置評価</h2><p class="note">計画位置と実測位置を比較します。GPS精度を考慮した参考診断です。</p>
-  <div class="kpis"><div class="kpi"><small>計画 1-4距離</small><strong id="plannedDist">—</strong></div><div class="kpi"><small>実測 1-4距離</small><strong id="actualDist">—</strong></div><div class="kpi"><small>計画 1→4 方位（磁方位）</small><strong id="plannedBearing">—</strong></div><div class="kpi"><small>実測 1→4 方位（磁方位）</small><strong id="actualBearing">—</strong></div></div>
-  <div class="status" id="diagStatus">1番・4番を登録すると診断できます。</div>
+  <div class="kpis"><div class="kpi"><small>計画 1-4基準距離</small><strong id="plannedDist">—</strong></div><div class="kpi"><small>実測 1-4基準距離</small><strong id="actualDist">—</strong></div><div class="kpi"><small>計画 1→4基準方位（磁方位）</small><strong id="plannedBearing">—</strong></div><div class="kpi"><small>実測 1→4基準方位（磁方位）</small><strong id="actualBearing">—</strong></div></div>
+  <div class="status" id="diagStatus">コースに応じた実在マークを登録すると診断できます。</div>
  </div>
  <div class="card"><h2>マークごとの配置誤差</h2><div id="errors"></div></div>
  <div class="card"><h2>ライン診断</h2><div id="lineDiag" class="status">B・BFコースのライン両端を登録すると実測値を表示します。</div></div>
@@ -514,8 +514,19 @@ function actualGateCenter(){
  const inv=inverse(a,b);
  return geo(a,v(inv.bearing,inv.dist/2));
 }
+function diagnosticMarkKeys(course){
+ // Only physical, independently installed marks are listed for per-mark evaluation.
+ // B/BF/TG mark 4 is a calculated reference at the 4S-4P midpoint.
+ return ({
+   windward:["1","4"],
+   triangle:["1","2","4"],
+   practice:["1","4S","4P"],
+   practiceLine:["1","4S","4P","F1","F2"],
+   tg:["1","2","4S","4P"]
+ })[course]||[];
+}
 function diagnostics(){
- const cfg=settings(),p1=actual["1"],p4=cfg.course==="tg"?actualGateCenter():actual["4"];
+ const cfg=settings(),p1=actual["1"],p4=(cfg.course==="practice"||cfg.course==="practiceLine"||cfg.course==="tg")?actualGateCenter():actual["4"];
  $("plannedDist").textContent=`${cfg.d14.toFixed(0)}m`;
  $("plannedBearing").textContent=`${cfg.windMag.toFixed(1)}°（磁方位）`;
 
@@ -539,7 +550,7 @@ function diagnostics(){
    return dirs[Math.round(norm(b)/45)%8];
  };
 
- // Main course axis: measured 1 -> 4 distance and bearing.
+ // Main course axis: measured 1 -> physical 4, or the 4S-4P midpoint for B/BF/TG.
  if(p1&&p4){
    const r=inverse(p1,p4),acc=combinedAcc(p1,p4);
    $("actualDist").textContent=`${r.dist.toFixed(1)}m`;
@@ -558,6 +569,10 @@ function diagnostics(){
    $("diagStatus").textContent="1マーク・4マークの実測座標を登録してください。";
  }
 
+ if(cfg.course==="practice"||cfg.course==="practiceLine"||cfg.course==="tg"){
+   const axisNote=cfg.course==="tg"?"TGコースの4基準点は4S・4Pの実測中点です。4マーク自体はGPS登録・個別評価しません。":"B・BFコースの4基準点は4S・4Pの実測中点です。4マーク自体はGPS登録・個別評価しません。";
+   const noteNode=document.createElement("div");noteNode.className="note";noteNode.textContent=axisNote;$("diagStatus").appendChild(noteNode);
+ }
  let extra="";
  if(cfg.course==="triangle"||cfg.course==="tg"){
    const side=actual["2"];
@@ -571,7 +586,7 @@ function diagnostics(){
    if(cfg.course==="tg")extra+=`<div class="status">4マークは4S・4Pの実測中点から算出しています。4S・4Pの両方をGPS登録してください。</div>`;
  }
  if(cfg.course==="practice"||cfg.course==="practiceLine"){
-   extra=`<div class="status">B・BFコースの基本コース角は1番・4番の実測位置から診断します。ラインは両端のGPS精度を考慮して評価します。</div>`;
+   extra=`<div class="status">B・BFコースの基本コース軸は、1マークと4S・4Pの実測中点（4基準点）から診断します。4マーク自体は実在しないため、個別の配置誤差には表示しません。ラインは両端のGPS精度を考慮して評価します。</div>`;
  }
  let extraNode=document.getElementById("angleExtra");
  if(!extraNode){extraNode=document.createElement("div");extraNode.id="angleExtra";$("diagStatus").after(extraNode);}
@@ -579,7 +594,7 @@ function diagnostics(){
 
  // Per-mark error and a practical move direction from the measured position
  // back toward the planned coordinate.
- $("errors").innerHTML=`<table><thead><tr><th>マーク</th><th>位置誤差・判定</th><th>修正の目安</th></tr></thead><tbody>${getKeys().map(k=>{
+ $("errors").innerHTML=`<table><thead><tr><th>マーク</th><th>位置誤差・判定</th><th>修正の目安</th></tr></thead><tbody>${diagnosticMarkKeys(cfg.course).map(k=>{
    const g=planGeo(k),a=actual[k];
    if(!g||!a)return `<tr><td>${labels[k]||k}</td><td colspan="2">配置原点またはGPS未登録</td></tr>`;
    const err=inverse(g,a),move=inverse(a,g),acc=accOf(a),state=classify(err.dist,acc);
