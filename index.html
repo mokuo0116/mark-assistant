@@ -108,25 +108,25 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
  <div class="card">
   <h2>コース設定</h2>
   <div class="field"><label>コース形式</label><select id="course"><option value="windward">上下</option><option value="triangle">Tコース</option><option value="practice">Bコース</option><option value="practiceLine">BFコース</option><option value="tg">TGコース（Triangle Gate）</option></select></div>
+  <div class="field" id="practiceAnchorField">
+   <label>配置原点（基準マーク）</label>
+   <select id="practiceAnchor"></select>
+   <small class="note">コース上の実在するマークから任意の1つを選択できます。選択したマークの実測GPS位置を基準にコース全体を配置します。</small>
+  </div>
   <div class="grid">
    <div class="field"><label>風軸（磁方位 °）</label><input id="wind" type="number" min="0" max="359" value="0"></div>
    <div class="field"><label>1-4距離（m）</label><input id="d14" type="number" min="1" value="700"></div>
   </div>
   <div id="practiceFields" hidden>
-   <h2 style="margin-top:12px">B・BFコース追加設定</h2>
-   <div class="field" id="practiceAnchorField">
-    <label>配置原点（基準マーク）</label>
-    <select id="practiceAnchor"><option value="4P">4Pマーク</option><option value="1">1マーク</option></select>
-    <small class="note">選択したマークの実測GPS位置を基準に、コース全体を配置します。</small>
-   </div>
+   <h2 style="margin-top:12px">B・BF・TGコース追加設定</h2>
    <div class="grid">
     <div class="field" id="startDistField"><label>スタートライン全長（4S–4P間・m）</label><input id="startDist" type="number" min="1" value="100"><small class="note">入力値が4Sと4Pの間の全長になります（片側の長さではありません）。</small></div>
     <div class="field" id="finishDistField"><label>4-フィニッシュ基準距離（m）</label><input id="finishDist" type="number" min="1" value="200"></div>
     <div class="field" id="finishLineField"><label>フィニッシュライン長（m）</label><input id="finishLine" type="number" min="1" value="50"></div><div class="field" id="tgGateField" hidden><label>下ゲート幅（4S–4P・m）</label><input id="tgGateWidth" type="number" min="1" value="100"></div>
    </div>
-   <p class="note">B・BFコースでは基準マークを選択できます。TGコースは4Pマークを配置原点とし、4S–4Pの中点を4マークとして表示します。4S–4Pゲートをスタート兼フィニッシュに使用します。</p>
+   <p class="note">B・BFコースでは4S・4P・1マークなど、実在するマークを配置原点に選択できます。TGコースは4S・4P・1マーク・2マークから選択でき、4S–4Pゲートをスタート兼フィニッシュに使用します。</p>
    <details class="help"><summary>B・BFコースの配置ルール</summary><p class="note">選択した基準マーク（4Pまたは1マーク）の実測位置を基準にコースを配置します。4S・4Pは左右対称です。ラインなしでは4Sから風軸+120°、4Pから風軸−160°に引いた半直線の交点をレスキュー艇の待機位置とします。フィニッシュ距離・ライン長はラインありの場合のみ設定します。</p></details>
-   <div id="tgHelp" class="status" hidden>TGコース航路：スタートゲート → 1 → 4ゲート → 1 → 2（サイド） → 4ゲート（フィニッシュ）。4は4S・4Pの中点で、物理マークではありません。</div>
+   <div id="tgHelp" class="status" hidden>TGコース航路：スタートゲート → 1 → 4ゲート → 1 → 2マーク → 4ゲート（フィニッシュ）。配置原点には1・2・4S・4Pのいずれかを選択できます。</div>
   </div>
   <p class="note">風軸は風が吹いてくる方向を示す磁方位です（磁北000°・磁東090°）。座標計算では磁気偏角を補正して真方位に変換します。</p>
   <p class="note">偏角補正は現行RAS互換の2020.0年近似式です。現在値を保証するものではありません。</p>
@@ -432,10 +432,21 @@ function inverse(a,b){
  return{dist,bearing:norm(deg(Math.atan2(y,x)))};
 }
 function anchorTarget(){
- const c=settings().course;
- if(c==="tg")return "4P";
- if(c==="practice"||c==="practiceLine")return $("practiceAnchor")?.value||"4P";
- return "1";
+ const selected=$("practiceAnchor")?.value;
+ return selected&&planned[selected]?selected:(planned["1"]?"1":Object.keys(planned).find(k=>!['R','F1','F2'].includes(k))||"1");
+}
+function updateAnchorOptions(preferred){
+ const c=$("course").value;
+ const candidates={
+  windward:["1","4"],
+  triangle:["1","2","4"],
+  practice:["1","4S","4P"],
+  practiceLine:["1","4S","4P","F1","F2"],
+  tg:["1","2","4S","4P"]
+ }[c]||["1"];
+ const select=$("practiceAnchor"),current=preferred||select.value;
+ select.innerHTML=candidates.map(k=>`<option value="${k}">${labels[k]||k}</option>`).join("");
+ select.value=candidates.includes(current)?current:(candidates.includes("1")?"1":candidates[0]);
 }
 function anchorPosition(){
  const lat=$("baseLat").value,lon=$("baseLon").value;
@@ -620,7 +631,7 @@ function diagnostics(){
 // 7. ローカル保存・共有・履歴
 // ============================================================
 function save(){try{localStorage.setItem("dokkyoMarkAssistantV02",JSON.stringify({actual,baseLat:$("baseLat").value,baseLon:$("baseLon").value,anchorKey,courseGenerated,vals:Object.fromEntries(["course","wind","d14","startDist","finishDist","finishLine","practiceAnchor","tgGateWidth"].map(k=>[k,$(k).value]))}))}catch(e){}}
-function load(){try{let x=JSON.parse(localStorage.getItem("dokkyoMarkAssistantV02")||"null");if(!x)return;actual=x.actual||{};$("baseLat").value=x.baseLat||"";$("baseLon").value=x.baseLon||"";Object.entries(x.vals||{}).forEach(([k,v])=>$(k).value=v);anchorKey=x.anchorKey||(($("baseLat").value&&$("baseLon").value)?anchorTarget():null);courseGenerated=!!x.courseGenerated}catch(e){}}
+function load(){try{let x=JSON.parse(localStorage.getItem("dokkyoMarkAssistantV02")||"null");if(!x)return;actual=x.actual||{};$("baseLat").value=x.baseLat||"";$("baseLon").value=x.baseLon||"";Object.entries(x.vals||{}).forEach(([k,v])=>$(k).value=v);updateAnchorOptions(x.vals?.practiceAnchor||"1");anchorKey=x.anchorKey||(($("baseLat").value&&$("baseLon").value)?anchorTarget():null);courseGenerated=!!x.courseGenerated}catch(e){}}
 
 function simultaneousTarget(){return anchorTarget()}
 function updateSimultaneousButton(){
@@ -927,20 +938,25 @@ function updatePracticeFields(){
  const c=$("course").value;
  const practice=(c==="practice"||c==="practiceLine"||c==="tg");
  $("practiceFields").hidden=!practice;
- $("practiceAnchorField").hidden=!practice||c==="tg";
- $("practiceAnchor").disabled=!practice||c==="tg";
+ $("practiceAnchorField").hidden=false;
+ $("practiceAnchor").disabled=false;
  $("startDistField").hidden=c==="tg";
  $("finishDistField").hidden=c!=="practiceLine";
  $("finishLineField").hidden=c!=="practiceLine";
  $("tgGateField").hidden=c!=="tg";
  $("tgHelp").hidden=c!=="tg";
 }
-$("course").onchange=()=>{updatePracticeFields();makePlan(true);showDmaToast("再計算完了","コース形式を変更して配置を更新しました。");};
+$("course").onchange=()=>{
+ updateAnchorOptions("1");updatePracticeFields();
+ anchorKey=null;$("baseLat").value="";$("baseLon").value="";
+ $("baseStatus").textContent=`配置原点を${anchorTarget()}に設定しました。新しい基準マークのGPS位置を登録してください。`;
+ makePlan(true);showDmaToast("再計算完了","コース形式を変更しました。配置原点マークをGPS登録してください。");
+};
 $("practiceAnchor").onchange=()=>{
  anchorKey=null;
  $("baseLat").value="";$("baseLon").value="";
- $("baseStatus").textContent="基準マークを変更しました。新しい基準マークのGPS位置を登録してください。";
- makePlan(true);showDmaToast("基準マーク変更","新しい基準マークのGPS位置を登録してください。");
+ $("baseStatus").textContent=`基準マークを${labels[anchorTarget()]||anchorTarget()}に変更しました。新しい位置をGPS登録してください。`;
+ makePlan(true);showDmaToast("基準マーク変更",`${labels[anchorTarget()]||anchorTarget()}のGPS位置を登録してください。`);
 };
 $("generate").onclick=()=>{try{makePlan(true);showDmaToast("再計算完了","コース配置を更新しました。");}catch(e){showDmaToast("再計算できませんでした",e.message,"error");throw e;}};
 $("baseAndMarkGps").onclick=registerBaseAndMark;
@@ -960,6 +976,7 @@ function scheduleNormalRecalc(){clearTimeout(normalCalcTimer);normalCalcTimer=se
 function initializeApp(){
  // 端末内の前回データを読み込む。
  load();
+ updateAnchorOptions($("practiceAnchor").value||"1");
 
  // 共有リンクで開かれた場合は、URL内のスナップショットを優先する。
  // 読み込み後はURLからデータ本体を取り除き、通常の画面URLに戻す。
