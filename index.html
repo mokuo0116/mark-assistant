@@ -62,6 +62,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 /* Race operations mode */
 .race-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.race-grid .field{min-width:0}.race-results{display:grid;grid-template-columns:1fr 1fr;gap:8px}.race-point{padding:9px;background:#f5f8fa;border-radius:9px;min-width:0}.race-point strong{font-size:13px}.race-point small{display:block;color:var(--muted);font-size:11px;line-height:1.5;overflow-wrap:anywhere}.race-map{height:390px;width:100%;border:1px solid var(--line);border-radius:10px}.race-links{display:grid;gap:8px}.race-links button{width:100%}.race-warn{background:#fff5df;color:#775514;border:1px solid #f0dfb6;padding:10px;border-radius:9px;font-size:12px;line-height:1.6}
 @media(max-width:420px){.race-grid{grid-template-columns:1fr 1fr}.race-results{grid-template-columns:1fr}}
+body.guest-mode nav{display:none}
+body.guest-mode #setting,body.guest-mode #race,body.guest-mode #share{display:none!important}
+body.guest-mode #map,body.guest-mode #analysis{display:block!important}
+body.guest-mode #map .guest-hide{display:none!important}
+body.guest-mode .guest-banner{border:2px solid #002D8C;background:#eef4ff}
+body.guest-mode #analysis .card:first-child{border-color:#9bb8df}
 
 </style>
 
@@ -189,6 +195,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
   <p class="note">通常運用のコース設定・配置原点・登録済み実測位置を共有します。</p>
   <button class="primary full" id="sharePlan">全データを共有リンクにする</button>
   <div class="status" id="shareStatus">共有リンクはURLにデータを含めます。長大なデータでは共有できない場合があります。</div>
+ </div>
+ <div class="card">
+  <h2>お客様用リンク（閲覧・GPS誘導）</h2>
+  <p class="note">合同練習の参加校向け。コース地図、現在地からのマーク誘導、設置済みマークのズレを確認できます。コース設定・マーク登録・レース運営は操作できません。</p>
+  <button class="primary full" id="createGuestLink">お客様用リンクを作成</button>
+  <div class="field" style="margin-top:10px"><label for="guestLinkOutput">お客様用リンク</label><textarea id="guestLinkOutput" rows="3" readonly placeholder="リンクを作成するとここに表示されます。"></textarea></div>
+  <button class="secondary full" id="copyGuestLink" disabled>お客様用リンクをコピー</button>
+  <div class="status">リンクを知っている人は誰でも閲覧できます。URLにコース座標と実測位置が含まれるため、送信先に注意してください。</div>
  </div>
  <div class="card">
   <h2>受信：マークレイヤー → DMA</h2>
@@ -528,7 +542,7 @@ function diagnosticMarkKeys(course){
 function diagnostics(){
  const cfg=settings(),p1=actual["1"],p4=(cfg.course==="practice"||cfg.course==="practiceLine"||cfg.course==="tg")?actualGateCenter():actual["4"];
  $("plannedDist").textContent=`${cfg.d14.toFixed(0)}m`;
- $("plannedBearing").textContent=`${cfg.windMag.toFixed(1)}°（磁方位）`;
+ $("plannedBearing").textContent=`${norm(cfg.windMag+180).toFixed(1)}°（磁方位）`;
 
  // Browser GPS accuracy is a radius estimate, not a guaranteed error bound.
  // Combine endpoint accuracies by root-sum-square for line measurements.
@@ -556,13 +570,14 @@ function diagnostics(){
    $("actualDist").textContent=`${r.dist.toFixed(1)}m`;
    $("actualBearing").textContent=`${bearingTrueToMagnetic(r.bearing,p1.lat,p1.lon).toFixed(1)}°（磁方位）`;
    const distDiff=r.dist-cfg.d14;
-   const angleDiff=((r.bearing-cfg.wind+540)%360)-180;
+   const expectedDownwindTrue=norm(cfg.wind+180);
+   const angleDiff=((r.bearing-expectedDownwindTrue+540)%360)-180;
    const lengthState=classify(Math.abs(distDiff),acc);
    const angleTolerance=acc===null?null:deg(Math.atan2(acc,Math.max(1,r.dist)));
    const angleState=classify(Math.abs(angleDiff),angleTolerance);
    $("diagStatus").innerHTML=
      `1-4距離差 <strong>${signed(distDiff)}m</strong> ${badge(lengthState)}<br>`+
-     `風軸との差 <strong>${signed(angleDiff)}°</strong> ${badge(angleState)}<br>`+
+     `1→4軸の方位差 <strong>${signed(angleDiff)}°</strong> ${badge(angleState)}<br>`+
      `<small>両端のGPS精度から算出した目安：距離 ±${acc===null?"—":acc.toFixed(1)+"m"} ／ 方位 ±${angleTolerance===null?"—":angleTolerance.toFixed(1)+"°"}</small>`;
  }else{
    $("actualDist").textContent="—";$("actualBearing").textContent="—";
@@ -700,6 +715,35 @@ function applyData(x){
 }
 function courseName(){
  return ({windward:"上下",triangle:"Tコース",practice:"Bコース",practiceLine:"BFコース",tg:"TGコース（Triangle Gate）"}[$("course").value]||$("course").value);
+}
+function createGuestLink(){
+ if(!courseGenerated||!origin())throw new Error("先にコースを計算し、配置原点マークをGPS登録してください。");
+ const snapshot={
+  v:4,actual,baseLat:$("baseLat").value,baseLon:$("baseLon").value,
+  anchorKey,courseGenerated:true,
+  vals:Object.fromEntries(["course","wind","d14","startDist","finishDist","finishLine","practiceAnchor","tgGateWidth"].map(k=>[k,$(k).value]))
+ };
+ const url=new URL(location.href);url.hash="guest="+encodeData(snapshot);
+ $("guestLinkOutput").value=url.toString();$("copyGuestLink").disabled=false;
+ $("shareStatus").textContent="お客様用リンクを作成しました。送信前に登録済みマーク位置を確認してください。";
+}
+function activateGuestMode(){
+ document.body.classList.add("guest-mode");
+ const nav=document.querySelector("nav");if(nav)nav.hidden=true;
+ document.querySelectorAll("main section").forEach(sec=>sec.classList.toggle("active",sec.id==="map"||sec.id==="analysis"));
+ const mapSection=$("map");
+ if(mapSection){
+  const banner=document.createElement("div");banner.className="card guest-banner";
+  banner.innerHTML="<h2>合同練習用コース案内</h2><p class='note'>このページは閲覧・GPS誘導専用です。コース設定やマーク登録はできません。地図・GPSの利用には通信と位置情報の許可が必要です。</p>";
+  mapSection.insertBefore(banner,mapSection.firstChild);
+  [...mapSection.querySelectorAll(".card")].forEach(card=>{
+   const h=card.querySelector("h2")?.textContent?.trim()||"";
+   if(["マークの設置登録","計画コース・実測位置","登録済み座標"].includes(h))card.classList.add("guest-hide");
+  });
+ }
+ if(realMap){realMap._hasCourseView=false;realMap._userMovedView=false;}
+ renderAll();
+ if(realMap)setTimeout(()=>realMap.invalidateSize(),180);
 }
 function createShareLink(){
  const url=new URL(location.href);
@@ -976,6 +1020,8 @@ $("practiceAnchor").onchange=()=>{
 $("generate").onclick=()=>{try{makePlan(true);showDmaToast("再計算完了","コース配置を更新しました。");}catch(e){showDmaToast("再計算できませんでした",e.message,"error");throw e;}};
 $("baseAndMarkGps").onclick=registerBaseAndMark;
 $("sharePlan").onclick=createShareLink;
+$("createGuestLink").onclick=()=>{try{createGuestLink()}catch(e){$("guestLinkOutput").value="";$("copyGuestLink").disabled=true;showDmaToast("リンクを作成できません",e.message,"error");}};
+$("copyGuestLink").onclick=async()=>{const value=$("guestLinkOutput").value;if(!value)return;try{await navigator.clipboard.writeText(value);showDmaToast("コピー完了","お客様用リンクをコピーしました。");}catch(e){$("guestLinkOutput").focus();$("guestLinkOutput").select();showDmaToast("手動でコピーしてください","リンクを選択しました。");}};
 $("saveHistory").onclick=saveHistory;
 $("liveGps").onclick=startLiveGps;
 $("sagamiOverlayToggle").onchange=updateSagamiOverlay;
@@ -997,8 +1043,15 @@ function initializeApp(){
  // 読み込み後はURLからデータ本体を取り除き、通常の画面URLに戻す。
  try{
    const raceMatch=location.hash.match(/(?:^#|&)race=([^&]+)/);
+   const guestMatch=location.hash.match(/(?:^#|&)guest=([^&]+)/);
    const match=location.hash.match(/(?:^#|&)data=([^&]+)/);
-   if(raceMatch){
+   if(guestMatch){
+     const guestData=decodeData(guestMatch[1]);
+     applyData(guestData);
+     // Keep the guest payload in the URL so refreshing or reopening the link
+     // restores the same read-only guest view.
+     activateGuestMode();
+   }else if(raceMatch){
      applyRaceShareSnapshot(decodeData(raceMatch[1]));
      document.querySelector('nav button[data-tab="race"]')?.click();
      history.replaceState(null,"",location.pathname+location.search);
