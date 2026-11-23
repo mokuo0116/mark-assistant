@@ -64,7 +64,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 @media(max-width:420px){.race-grid{grid-template-columns:1fr 1fr}.race-results{grid-template-columns:1fr}}
 body.guest-mode nav{display:none}
 body.guest-mode #setting,body.guest-mode #race,body.guest-mode #share{display:none!important}
-body.guest-mode #map,body.guest-mode #analysis{display:block!important}
+body.guest-mode #map{display:block!important}
+body.guest-mode #analysis{display:none!important}
 body.guest-mode #map .guest-hide{display:none!important}
 body.guest-mode .guest-banner{border:2px solid #002D8C;background:#eef4ff}
 body.guest-mode #analysis .card:first-child{border-color:#9bb8df}
@@ -199,7 +200,7 @@ body.guest-mode #analysis .card:first-child{border-color:#9bb8df}
  <div class="card">
   <h2>お客様用リンク（閲覧・GPS誘導）</h2>
   <p class="note">合同練習の参加校向け。コース地図、現在地からのマーク誘導、設置済みマークのズレを確認できます。コース設定・マーク登録・レース運営は操作できません。</p>
-  <button class="primary full" id="createGuestLink">お客様用リンクを作成</button>
+  <button class="primary full" id="createGuestLink">LINEでお客様用リンクを送る</button>
   <div class="field" style="margin-top:10px"><label for="guestLinkOutput">お客様用リンク</label><textarea id="guestLinkOutput" rows="3" readonly placeholder="リンクを作成するとここに表示されます。"></textarea></div>
   <button class="secondary full" id="copyGuestLink" disabled>お客様用リンクをコピー</button>
   <div class="status">リンクを知っている人は誰でも閲覧できます。URLにコース座標と実測位置が含まれるため、送信先に注意してください。</div>
@@ -724,8 +725,19 @@ function createGuestLink(){
   vals:Object.fromEntries(["course","wind","d14","startDist","finishDist","finishLine","practiceAnchor","tgGateWidth"].map(k=>[k,$(k).value]))
  };
  const url=new URL(location.href);url.hash="guest="+encodeData(snapshot);
- $("guestLinkOutput").value=url.toString();$("copyGuestLink").disabled=false;
- $("shareStatus").textContent="お客様用リンクを作成しました。送信前に登録済みマーク位置を確認してください。";
+ const guestUrl=url.toString();
+ $("guestLinkOutput").value=guestUrl;$("copyGuestLink").disabled=false;
+ const message=[
+  "【DOKKYO MARK ASSISTANT／合同練習用】",
+  `コース：${courseName()}`,
+  "地図・現在地からのマーク誘導・設置マークの位置ズレを確認できます。",
+  "こちらのリンクを開いてください：",
+  guestUrl
+ ].join("\\n");
+ const lineUrl="https://line.me/R/msg/text/?"+encodeURIComponent(message);
+ $("shareStatus").textContent="LINEの共有画面を開きます。送信先を選んで送信してください。";
+ // LINEへの遷移後も送信操作はユーザー自身が行います。
+ window.location.href=lineUrl;
 }
 function renderGuestDeviations(){
  const host=$("guestDeviationList");if(!host)return;
@@ -747,7 +759,7 @@ function activateGuestMode(){
  const mapSection=$("map");
  if(mapSection){
   const banner=document.createElement("div");banner.className="card guest-banner";
-  banner.innerHTML="<h2>合同練習用コース案内</h2><p class='note'>地図・マーク誘導・設置マークの計画位置からのズレを確認できます。配置評価やコース設定機能はありません。位置情報を許可してください。</p>";
+  banner.innerHTML="<h2>合同練習用コース案内</h2><p class='note'>地図・マーク誘導・設置マークの計画位置からのズレを確認できます。配置評価やコース設定機能はありません。位置情報を許可してください。リンクには登録済みマークのGPS座標が含まれ、リンクを知っている人は閲覧できます。</p>";
   mapSection.insertBefore(banner,mapSection.firstChild);
   [...mapSection.querySelectorAll(".card")].forEach(card=>{
    const h=card.querySelector("h2")?.textContent?.trim()||"";
