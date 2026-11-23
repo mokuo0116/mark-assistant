@@ -182,7 +182,7 @@ body.guest-mode #analysis .card:first-child{border-color:#9bb8df}
 </section>
 <section id="analysis">
  <div class="card"><h2>配置評価</h2><p class="note">計画位置と実測位置を比較します。GPS精度を考慮した参考診断です。</p>
-  <div class="kpis"><div class="kpi"><small>計画 1-4基準距離</small><strong id="plannedDist">—</strong></div><div class="kpi"><small>実測 1-4基準距離</small><strong id="actualDist">—</strong></div><div class="kpi"><small>計画 1→4基準方位（磁方位）</small><strong id="plannedBearing">—</strong></div><div class="kpi"><small>実測 1→4基準方位（磁方位）</small><strong id="actualBearing">—</strong></div></div>
+  <div class="kpis"><div class="kpi"><small>計画 1-4基準距離</small><strong id="plannedDist">—</strong></div><div class="kpi"><small>実測 1-4基準距離</small><strong id="actualDist">—</strong></div><div class="kpi"><small>計画風軸（4→1・磁方位）</small><strong id="plannedBearing">—</strong></div><div class="kpi"><small>実測風軸（4→1・磁方位）</small><strong id="actualBearing">—</strong></div></div>
   <div class="status" id="diagStatus">コースに応じた実在マークを登録すると診断できます。</div>
  </div>
  <div class="card"><h2>マークごとの配置誤差</h2><div id="errors"></div></div>
@@ -542,7 +542,7 @@ function diagnosticMarkKeys(course){
 function diagnostics(){
  const cfg=settings(),p1=actual["1"],p4=(cfg.course==="practice"||cfg.course==="practiceLine"||cfg.course==="tg")?actualGateCenter():actual["4"];
  $("plannedDist").textContent=`${cfg.d14.toFixed(0)}m`;
- $("plannedBearing").textContent=`${norm(cfg.windMag+180).toFixed(1)}°（磁方位）`;
+ $("plannedBearing").textContent=`${cfg.windMag.toFixed(1)}°（磁方位）`;
 
  // Browser GPS accuracy is a radius estimate, not a guaranteed error bound.
  // Combine endpoint accuracies by root-sum-square for line measurements.
@@ -564,20 +564,20 @@ function diagnostics(){
    return dirs[Math.round(norm(b)/45)%8];
  };
 
- // Main course axis: measured 1 -> physical 4, or the 4S-4P midpoint for B/BF/TG.
+ // Main course axis: compare the configured upwind axis with measured 4 -> 1 bearing. For B/BF/TG, 4 is the 4S-4P midpoint.
  if(p1&&p4){
    const r=inverse(p1,p4),acc=combinedAcc(p1,p4);
    $("actualDist").textContent=`${r.dist.toFixed(1)}m`;
-   $("actualBearing").textContent=`${bearingTrueToMagnetic(r.bearing,p1.lat,p1.lon).toFixed(1)}°（磁方位）`;
+   const measuredWindAxisTrue=norm(r.bearing+180);
+   $("actualBearing").textContent=`${bearingTrueToMagnetic(measuredWindAxisTrue,p1.lat,p1.lon).toFixed(1)}°（磁方位）`;
    const distDiff=r.dist-cfg.d14;
-   const expectedDownwindTrue=norm(cfg.wind+180);
-   const angleDiff=((r.bearing-expectedDownwindTrue+540)%360)-180;
+   const angleDiff=((measuredWindAxisTrue-cfg.wind+540)%360)-180;
    const lengthState=classify(Math.abs(distDiff),acc);
    const angleTolerance=acc===null?null:deg(Math.atan2(acc,Math.max(1,r.dist)));
    const angleState=classify(Math.abs(angleDiff),angleTolerance);
    $("diagStatus").innerHTML=
-     `1-4距離差 <strong>${signed(distDiff)}m</strong> ${badge(lengthState)}<br>`+
-     `1→4軸の方位差 <strong>${signed(angleDiff)}°</strong> ${badge(angleState)}<br>`+
+     `1-4基準距離差 <strong>${signed(distDiff)}m</strong> ${badge(lengthState)}<br>`+
+     `風軸との差 <strong>${signed(angleDiff)}°</strong> ${badge(angleState)}<br>`+
      `<small>両端のGPS精度から算出した目安：距離 ±${acc===null?"—":acc.toFixed(1)+"m"} ／ 方位 ±${angleTolerance===null?"—":angleTolerance.toFixed(1)+"°"}</small>`;
  }else{
    $("actualDist").textContent="—";$("actualBearing").textContent="—";
@@ -727,19 +727,35 @@ function createGuestLink(){
  $("guestLinkOutput").value=url.toString();$("copyGuestLink").disabled=false;
  $("shareStatus").textContent="お客様用リンクを作成しました。送信前に登録済みマーク位置を確認してください。";
 }
+function renderGuestDeviations(){
+ const host=$("guestDeviationList");if(!host)return;
+ const keys=diagnosticMarkKeys(settings().course);
+ const compass=["北","北東","東","南東","南","南西","西","北西"];
+ host.innerHTML=keys.map(k=>{
+  const plannedPoint=planGeo(k),measured=actual[k];
+  if(!plannedPoint||!measured)return `<div class="status">${labels[k]||k}：実測位置未登録</div>`;
+  const err=inverse(plannedPoint,measured),move=inverse(measured,plannedPoint);
+  const dir=compass[Math.round(norm(bearingTrueToMagnetic(move.bearing,measured.lat,measured.lon))/45)%8];
+  return `<div class="status"><strong>${labels[k]||k}</strong><br>計画位置から ${err.dist.toFixed(1)}m<br><small>計画位置へ：${dir}方向</small><br><small>GPS精度 ±${Number.isFinite(measured.accuracy)?measured.accuracy.toFixed(1):"不明"}m</small></div>`;
+ }).join("");
+}
 function activateGuestMode(){
  document.body.classList.add("guest-mode");
  const nav=document.querySelector("nav");if(nav)nav.hidden=true;
- document.querySelectorAll("main section").forEach(sec=>sec.classList.toggle("active",sec.id==="map"||sec.id==="analysis"));
+ document.querySelectorAll("main section").forEach(sec=>sec.classList.toggle("active",sec.id==="map"));
+ const analysisSection=$("analysis");if(analysisSection)analysisSection.hidden=true;
  const mapSection=$("map");
  if(mapSection){
   const banner=document.createElement("div");banner.className="card guest-banner";
-  banner.innerHTML="<h2>合同練習用コース案内</h2><p class='note'>このページは閲覧・GPS誘導専用です。コース設定やマーク登録はできません。地図・GPSの利用には通信と位置情報の許可が必要です。</p>";
+  banner.innerHTML="<h2>合同練習用コース案内</h2><p class='note'>地図・マーク誘導・設置マークの計画位置からのズレを確認できます。配置評価やコース設定機能はありません。位置情報を許可してください。</p>";
   mapSection.insertBefore(banner,mapSection.firstChild);
   [...mapSection.querySelectorAll(".card")].forEach(card=>{
    const h=card.querySelector("h2")?.textContent?.trim()||"";
-   if(["マークの設置登録","計画コース・実測位置","登録済み座標"].includes(h))card.classList.add("guest-hide");
+   if(["マークの設置登録","計画コース・実測位置","登録済み座標","コース履歴"].includes(h))card.classList.add("guest-hide");
   });
+  const deviations=document.createElement("div");deviations.className="card";
+  deviations.innerHTML="<h2>設置マークの位置ズレ</h2><p class='note'>計画位置と実測位置の距離です。GPSの推定精度を含む参考値です。</p><div id='guestDeviationList'></div>";
+  mapSection.appendChild(deviations);
  }
  if(realMap){realMap._hasCourseView=false;realMap._userMovedView=false;}
  renderAll();
@@ -858,7 +874,7 @@ function navUpdate(prefix,items,position,map,selected,setSelected,resolve,invers
  readout.innerHTML=`<div style="font-size:14px">${selected} まで</div><div style="font-size:30px;line-height:1.25">${distance.toFixed(0)} m</div><div>進行方位 <span style="font-size:25px">${String(Math.round(bearing)%360).padStart(3,'0')}°</span></div><div style="font-size:14px;margin-top:4px">${near?'到達範囲の目安内です':'誘導中'}</div>`;
  hint.textContent=`GPS精度 ±${Math.round(accuracy)}m。到達目安は距離 ${Math.max(15,accuracy*1.5).toFixed(0)}m以内（自動到達判定・自動切替は行いません）。方位基準：磁北000°（磁方位）。`;
  }
-function navFocus(prefix,map,selected,resolve){const target=resolve(selected);if(map&&target){map.setView([target.lat,target.lon],Math.max(map.getZoom(),17),{animate:true});}}
+function navFocus(prefix,map,selected,resolve){const target=resolve(selected);if(map&&target){map.setView([target.lat,target.lon],Math.min(Math.max(map.getZoom(),13),15),{animate:true});}}
 function updateLiveReadings(){
  const o=origin();
  if(!courseGenerated){
@@ -944,7 +960,7 @@ function updateRealMap(){
  if(!window.L){el.hidden=true;empty.hidden=false;empty.textContent="地図ライブラリを読み込めません。インターネット接続を確認してください。";return}
  el.hidden=false;empty.hidden=true;
  if(!realMap){
-   realMap=L.map("realMap").setView([35.34503,139.66472],16);
+   realMap=L.map("realMap").setView([35.34503,139.66472],14);
    updateHakkeiArea();
    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
      maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -983,7 +999,7 @@ function updateRealMap(){
    pts.push(ll);
  }
  if(o&&pts.length&&!realMap._hasCourseView&&!realMap._userMovedView){
-   realMap.fitBounds(L.latLngBounds(pts).pad(.12),{maxZoom:17});
+   realMap.fitBounds(L.latLngBounds(pts).pad(.12),{maxZoom:15});
    realMap._hasCourseView=true;
  }
  setTimeout(()=>realMap.invalidateSize(),100);
@@ -991,7 +1007,7 @@ function updateRealMap(){
 // ============================================================
 // 9. 画面更新・イベント登録・初期化
 // ============================================================
-function renderAll(){renderLists();draw();diagnostics();updateRealMap();updateLiveReadings();updateNav();updateSimultaneousButton();$("mapStatus").textContent=origin()?`${anchorKey}マークを配置原点として使用中。`:`配置原点の${anchorTarget()}マークをGPS登録してください。模式図は相対配置です。`;save()}
+function renderAll(){renderLists();draw();diagnostics();updateRealMap();updateLiveReadings();updateNav();updateSimultaneousButton();renderGuestDeviations();$("mapStatus").textContent=origin()?`${anchorKey}マークを配置原点として使用中。`:`配置原点の${anchorTarget()}マークをGPS登録してください。模式図は相対配置です。`;save()}
 function removeActual(k){delete actual[k];renderAll()}
 function updatePracticeFields(){
  const c=$("course").value;
@@ -1206,9 +1222,15 @@ $("raceNavTarget").addEventListener("change",e=>{raceNavSelected=e.target.value;
 $("raceNavNext").addEventListener("click",()=>{const keys=Object.keys(raceComputed?.points||{}).filter(k=>!['finish','signal','outer'].includes(k));if(!keys.length)return;raceNavSelected=keys[(keys.indexOf(raceNavSelected)+1+keys.length)%keys.length];updateRaceNav();navFocus("raceNav",raceMap,raceNavSelected,k=>raceComputed?.points?.[k]||null);});
 function recenterOnCurrent(map,position,kind){
  if(!map){return;}
- if(!position){const status=$(kind==='race'?'raceLiveStatus':'liveStatus');if(status)status.textContent='現在地を取得中です。測位後にもう一度押してください。';return;}
+ if(!position){
+   const status=$(kind==='race'?'raceLiveStatus':'liveStatus');
+   const message='現在地の位置情報をまだ取得できていません。GPS追跡が開始されているか、位置情報の許可と通信状態を確認してください。測位完了後にもう一度お試しください。';
+   if(status)status.textContent=message;
+   if(typeof showDmaToast==='function')showDmaToast('現在地を取得していません',message,'warning');
+   return;
+ }
  map._programmaticRecenter=true;
- map.setView([position.lat,position.lon],17,{animate:true});
+ map.setView([position.lat,position.lon],15,{animate:true});
  if(kind==='race'){map._raceHasPlanView=true;map._raceUserMovedView=true;}else{map._hasCourseView=true;map._userMovedView=true;}
  setTimeout(()=>{if(map)map._programmaticRecenter=false;},350);
 }
@@ -1268,7 +1290,7 @@ function raceRender(){
   all.push(ll);
  }
  if(all.length&&!raceMap._raceHasPlanView&&!raceMap._raceUserMovedView){
-  raceMap._raceProgrammaticView=true;raceMap.fitBounds(L.latLngBounds(all).pad(0.12),{maxZoom:17});raceMap._raceHasPlanView=true;
+  raceMap._raceProgrammaticView=true;raceMap.fitBounds(L.latLngBounds(all).pad(0.12),{maxZoom:15});raceMap._raceHasPlanView=true;
   setTimeout(()=>{if(raceMap)raceMap._raceProgrammaticView=false;},250);
  }
  updateRaceLiveReadings();updateRaceNav();setTimeout(()=>raceMap.invalidateSize({pan:false}),180);
